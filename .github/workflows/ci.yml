@@ -7,8 +7,8 @@
 #   required status checks 引用（名字必须与 gh api .../check-runs 实际输出一致，BRANCHES §4）。
 # - `npm run validate` / `npm run scope:check` 的 package.json script 由 A1 登记（C-11，A1 唯一所有权），
 #   本工作流直接调用 `node scripts/*.mjs`，不依赖 script 别名。
-# - A2 的 scripts/validate-content.mjs 未落地前（T2.1 未合并），validate 步骤明确标记
-#   "PENDING-T2.1（未执行）"，绝不伪装为通过；A2 合并后必须在 main 完整重跑验证。
+# - A2 的 scripts/validate-content.mjs 未落地前（T2.1 未合并），validate 步骤在 CI 中
+#   真实跳过（Skipped）并打 ::warning::，绝不显示为绿色通过；A2 合并后必须在 main 完整重跑验证。
 
 name: ci
 
@@ -48,24 +48,29 @@ jobs:
       - name: scope:check（C-17 分支改动范围门禁）
         run: node scripts/check-scope.mjs
 
+      # A2/T2.1 未合并时该脚本不存在：让 validate 步骤真实「跳过」（灰色 Skipped），
+      # 而不是显示绿色 ✓ 让人误读为"校验通过"。hashFiles 在 checkout 之后求值。
       - name: validate（内容校验，A2）
+        if: ${{ hashFiles('scripts/validate-content.mjs') != '' }}
         run: |
           if node -e "process.exit(require('./package.json').scripts.validate ? 0 : 1)" 2>/dev/null; then
             echo ">> package.json 已登记 validate script，执行 npm run validate"
             npm run validate
-          elif [ -f scripts/validate-content.mjs ]; then
-            echo ">> package.json 未登记 validate（待 A1），直接执行 scripts/validate-content.mjs"
-            node scripts/validate-content.mjs
           else
-            echo "::warning::validate 未落地（T2.1/A2 未合并）——本步骤为 PENDING，不代表校验通过。A2 合并后必须在 main 完整重跑 CI。"
-            {
-              echo "## CI 检查实况"
-              echo "- scope:check: ✅ 已执行"
-              echo "- validate: ⏳ PENDING-T2.1（scripts/validate-content.mjs 不存在，未执行，不视为通过）"
-              echo "- build: 见后续步骤"
-              echo "- dist PII 扫描: 见后续步骤"
-            } >> "$GITHUB_STEP_SUMMARY"
+            echo "::warning::package.json 未登记 validate script（待 A1 补登记），直接执行校验器"
+            node scripts/validate-content.mjs
           fi
+
+      - name: validate 未落地（PENDING-T2.1，本检查未执行、不算通过）
+        if: ${{ hashFiles('scripts/validate-content.mjs') == '' }}
+        run: |
+          echo "::warning::validate 未落地（T2.1/A2 未合并）——本检查未执行，不代表校验通过。A2 合并后必须在 main 完整重跑 CI。"
+          {
+            echo "## CI 检查实况"
+            echo "- scope:check: 已执行"
+            echo "- validate: ⏳ PENDING-T2.1（scripts/validate-content.mjs 不存在，步骤已跳过，不视为通过）"
+            echo "- build / dist PII 扫描: 见后续步骤"
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: build
         run: npm run build
@@ -97,5 +102,5 @@ jobs:
             echo "## CI 检查实况（本 run 实际执行项）"
             echo "- 分支: \`${GITHUB_REF_NAME}\`（PR 源分支: \`${GITHUB_HEAD_REF:-非PR}\`）"
             echo "- scope:check / build / dist PII 扫描: 本 run 步骤状态见左侧 Steps"
-            echo "- validate: $( [ -f scripts/validate-content.mjs ] && echo '脚本存在，见 validate 步骤结果' || echo '⏳ PENDING-T2.1（未执行，不视为通过）' )"
+            echo "- validate: $( [ -f scripts/validate-content.mjs ] && echo '脚本存在，见 validate 步骤结果' || echo '⏳ PENDING-T2.1（步骤 Skipped，未执行、不视为通过）' )"
           } >> "$GITHUB_STEP_SUMMARY"
