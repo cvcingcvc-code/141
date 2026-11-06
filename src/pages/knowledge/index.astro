@@ -1,0 +1,35 @@
+---
+/**
+ * 知识列表 — /knowledge/（C-9 #3）
+ * 只从 collections.ts 取数（发布过滤唯一入口）。
+ */
+import Base from '../../layouts/Base.astro';
+import ContentCard from '../../components/ContentCard.astro';
+import { getAllKnowledge, toListItem, type ContentEntry } from '../../lib/collections';
+import { href } from '../../lib/format';
+
+const items = (await getAllKnowledge()).map((e) => toListItem(e as ContentEntry));
+---
+
+<Base title="知识" description="结构化的知识条目：来源可追溯、状态可标记、可信度可分级。">
+  <header class="page-head">
+    <h1>知识</h1>
+    <p class="page-head__desc">每条都标注来源与可信度；没有来源的条目会明确标为「未标注来源」，不假装已验证。</p>
+  </header>
+
+  {
+    items.length === 0 ? (
+      <div class="empty-state">
+        <p class="empty-state__title">还没有已发布的知识条目</p>
+        <p class="empty-state__desc">
+          内容通过 Markdown 提交并经人工确认后才会出现在这里。当前只有示例数据，且示例默认不发布。
+          <a href={href('/about/')}>了解本站如何发布内容</a>。
+        </p>
+      </div>
+    ) : (
+      <div class="content-list">
+        {items.map((item) => <ContentCard item={item} kind="knowledge" />)}
+      </div>
+    )
+  }
+</Base>

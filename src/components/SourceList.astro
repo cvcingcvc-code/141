@@ -1,0 +1,55 @@
+---
+/**
+ * SourceList — 来源列表（C-13 / C-5）
+ * 空来源时必须渲染「未标注来源」提示，不得静默省略（知识可追溯性的硬要求）。
+ */
+interface Source {
+  kind: string;
+  ref: string;
+  locator?: string | null;
+  accessed?: string | null;
+  note?: string | null;
+}
+
+interface Props {
+  sources?: Source[] | null;
+  emptyHint?: string;
+}
+
+const { sources = [], emptyHint = '未标注来源' } = Astro.props;
+const list = Array.isArray(sources) ? sources : [];
+
+const kindLabel: Record<string, string> = {
+  url: '链接',
+  book: '书籍',
+  paper: '论文',
+  course: '课程',
+  person: '人',
+  experience: '亲历',
+  agent: 'AI 生成',
+};
+---
+
+<section class="sources" aria-label="来源">
+  <h2 class="sources__title">来源</h2>
+  {
+    list.length === 0 ? (
+      <p class="sources__empty">
+        <span class="badge badge--warn">{emptyHint}</span>
+        本条知识尚未标注来源，可信度按「未验证」看待。
+      </p>
+    ) : (
+      <ol class="sources__list">
+        {list.map((s) => (
+          <li>
+            <span class="badge badge--kind">{kindLabel[s.kind] ?? s.kind}</span>
+            <span class="sources__ref">{s.ref}</span>
+            {s.locator && <span class="sources__locator">{s.locator}</span>}
+            {s.accessed && <span class="sources__accessed">（{String(s.accessed).slice(0, 10)} 查阅）</span>}
+            {s.note && <span class="sources__note">{s.note}</span>}
+          </li>
+        ))}
+      </ol>
+    )
+  }
+</section>

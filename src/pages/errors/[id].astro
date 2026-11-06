@@ -1,0 +1,87 @@
+---
+/**
+ * 错误详情 — /errors/[id]/（C-9 #10）
+ * 固定呈现五要素，缺任何一项在校验期就会失败（V-016），因此这里可以直接展开。
+ */
+import { render } from 'astro:content';
+import Base from '../../layouts/Base.astro';
+import TagList from '../../components/TagList.astro';
+import { getAllErrors, getAllProjects, toListItem, type ContentEntry } from '../../lib/collections';
+import { formatDate, href } from '../../lib/format';
+
+export async function getStaticPaths() {
+  const entries = await getAllErrors();
+  return entries.map((entry) => ({
+    params: { id: String(entry.data.id).toLowerCase() },
+    props: { entry },
+  }));
+}
+
+const { entry } = Astro.props;
+const { Content } = await render(entry);
+const d = entry.data;
+
+const projects = await getAllProjects();
+const projectHit = d.project
+  ? toListItem(projects.find((p) => String(p.data.id).toUpperCase() === String(d.project).toUpperCase()) as ContentEntry) ?? null
+  : null;
+
+const severityLabel: Record<string, string> = { low: '影响小', medium: '中等', high: '影响大' };
+const evidenceLabel: Record<string, string> = { commit: 'Commit', pr: 'PR', log: '日志', url: '链接', none: '无证据' };
+
+const blocks = [
+  { label: '症状', value: d.symptom },
+  { label: '上下文', value: d.context },
+  { label: '根因', value: d.root_cause },
+  { label: '修复', value: d.fix },
+  { label: '预防', value: d.prevention },
+];
+---
+
+<Base title={d.title} description={d.summary}>
+  <article class="entry">
+    <header class="entry__head">
+      <p class="entry__kind"><a href={href('/errors/')}>错误经验</a></p>
+      <h1>{d.title}</h1>
+      <p class="entry__summary">{d.summary}</p>
+      <div class="entry__meta">
+        <span class="badge badge--status">{severityLabel[d.severity] ?? d.severity}</span>
+        {d.sample && <span class="badge badge--sample">示例</span>}
+        <time datetime={d.occurred}>发生于 {formatDate(d.occurred)}</time>
+        {projectHit && <a class="entry__project" href={href(projectHit.path)}>{projectHit.title}</a>}
+      </div>
+      <TagList tags={d.tags} />
+    </header>
+
+    <dl class="spec spec--stacked">
+      {
+        blocks.map(({ label, value }) => (
+          <>
+            <dt>{label}</dt>
+            <dd>{value}</dd>
+          </>
+        ))
+      }
+    </dl>
+
+    <div class="prose">
+      <Content />
+    </div>
+
+    {
+      Array.isArray(d.evidence) && d.evidence.length > 0 && (
+        <section class="related">
+          <h2 class="related__title">证据</h2>
+          <ul>
+            {d.evidence.map((e: { kind: string; ref?: string }) => (
+              <li>
+                <span class="badge badge--kind">{evidenceLabel[e.kind] ?? e.kind}</span>
+                {e.ref ? <code>{e.ref}</code> : <span class="empty-inline">未提供</span>}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )
+    }
+  </article>
+</Base>

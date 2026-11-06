@@ -1,0 +1,33 @@
+---
+/**
+ * 错误经验列表 — /errors/（C-9 #9）
+ */
+import Base from '../../layouts/Base.astro';
+import ContentCard from '../../components/ContentCard.astro';
+import { getAllErrors, toListItem, type ContentEntry } from '../../lib/collections';
+import { href } from '../../lib/format';
+
+const items = (await getAllErrors()).map((e) => toListItem(e as ContentEntry));
+---
+
+<Base title="错误经验" description="踩坑记录：症状、根因、修复与预防。">
+  <header class="page-head">
+    <h1>错误经验</h1>
+    <p class="page-head__desc">每条都包含症状、上下文、根因、修复与预防五要素；缺一项就不算沉淀完成。</p>
+  </header>
+
+  {
+    items.length === 0 ? (
+      <div class="empty-state">
+        <p class="empty-state__title">还没有已发布的错误经验</p>
+        <p class="empty-state__desc">
+          错误经验同样需要人工确认。<a href={href('/about/')}>查看发布规则</a>。
+        </p>
+      </div>
+    ) : (
+      <div class="content-list">
+        {items.map((item) => <ContentCard item={item} kind="error" />)}
+      </div>
+    )
+  }
+</Base>
