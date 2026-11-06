@@ -903,3 +903,18 @@ h3 {
     padding-block: var(--space-2);
   }
 }
+
+/* ---- T3.3 补充：无空格长串（超长 URL / 标识符）不得撑破视口 ----
+ * 隔离环境实测：仅 word-break 作用在 code 上时，正文里的长链接仍是 1271px 的
+ * 不可断行行盒，360px 视口被撑成 1287px、768/1280 出现文档级横向溢出。
+ * overflow-wrap:anywhere 会同时收缩 min-content 宽度；代码块单独还原为 normal，
+ * 保持「只在 pre 内部横向滚动」这一既有正确行为。
+ */
+.prose {
+  overflow-wrap: anywhere;
+}
+
+.prose pre,
+.prose pre code {
+  overflow-wrap: normal;
+}
