@@ -1,0 +1,60 @@
+# deploy.yml — GitHub Pages 发布（T4.1 / A4，编排按 TASKS T4.1 产出 3）
+#
+# 链路：push main → npm ci → build → upload-pages-artifact → deploy-pages
+#
+# ⚠️ 部署前置条件（合并本 workflow 所在 PR 之前必须由用户/A1 完成，否则 main 上的 deploy run 会红）：
+#   1. 仓库 Settings → Pages → Source 选择 "GitHub Actions"；
+#   2. 本 workflow 需要 permissions: pages:write + id-token:write（已声明）；
+#   3. 仅从 main 构建（CONTRACTS C-3：deploy 只从 main 构建 = "用户确认合入 main 后才上站"的门禁）。
+#
+# 注：T4.1 只交付 workflow 编排，不执行部署；首次真实部署与验收属 T4.4。
+
+name: deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node（.nvmrc）
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: npm ci
+        run: npm ci
+
+      - name: build
+        run: npm run build
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

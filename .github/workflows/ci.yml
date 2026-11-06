@@ -1,0 +1,95 @@
+# ci.yml — PR / main 门禁（T4.1 / A4）
+#
+# 编排：npm ci → scope:check（C-17）→ validate（A2/T2.1）→ build → dist 产物 PII 扫描
+#
+# 重要约定：
+# - workflow 名与 job 名均为 `ci`：check-run 名 = "ci"，供 T1.3 阶段 B 的
+#   required status checks 引用（名字必须与 gh api .../check-runs 实际输出一致，BRANCHES §4）。
+# - `npm run validate` / `npm run scope:check` 的 package.json script 由 A1 登记（C-11，A1 唯一所有权），
+#   本工作流直接调用 `node scripts/*.mjs`，不依赖 script 别名。
+# - A2 的 scripts/validate-content.mjs 未落地前（T2.1 未合并），validate 步骤明确标记
+#   "PENDING-T2.1（未执行）"，绝不伪装为通过；A2 合并后必须在 main 完整重跑验证。
+
+name: ci
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout（full fetch，scope:check 需要 origin/main）
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node（.nvmrc）
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: npm ci
+        run: npm ci
+
+      - name: scope:check（C-17 分支改动范围门禁）
+        run: node scripts/check-scope.mjs
+
+      - name: validate（内容校验，A2）
+        run: |
+          if node -e "process.exit(require('./package.json').scripts.validate ? 0 : 1)" 2>/dev/null; then
+            echo ">> package.json 已登记 validate script，执行 npm run validate"
+            npm run validate
+          elif [ -f scripts/validate-content.mjs ]; then
+            echo ">> package.json 未登记 validate（待 A1），直接执行 scripts/validate-content.mjs"
+            node scripts/validate-content.mjs
+          else
+            echo "::warning::validate 未落地（T2.1/A2 未合并）——本步骤为 PENDING，不代表校验通过。A2 合并后必须在 main 完整重跑 CI。"
+            {
+              echo "## CI 检查实况"
+              echo "- scope:check: ✅ 已执行"
+              echo "- validate: ⏳ PENDING-T2.1（scripts/validate-content.mjs 不存在，未执行，不视为通过）"
+              echo "- build: 见后续步骤"
+              echo "- dist PII 扫描: 见后续步骤"
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: build
+        run: npm run build
+
+      # 产物 PII 扫描（C-18 三道检查之一：dist/**）。工作树与 git 历史扫描由 A5 的
+      # qa/scripts/privacy-scan.mjs 负责（T5.1），不在此重复。
+      - name: dist 产物 PII 扫描（C-18 L3）
+        run: |
+          set -euo pipefail
+          PATTERNS='([A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}|sk-[A-Za-z0-9]{16,}|ghp_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|AKIA[0-9A-Z]{16}|PRIVATE KEY|1[3-9][0-9]{9})'
+          if [ ! -d dist ]; then
+            echo "::error::dist/ 不存在，构建未产出？"
+            exit 1
+          fi
+          # -I 跳过二进制（pagefind 索引等）
+          HITS=$(grep -rInE "$PATTERNS" dist || true)
+          if [ -n "$HITS" ]; then
+            echo "::error::dist 产物命中疑似 PII/凭据（V-010 / C-18 L3）："
+            echo "$HITS"
+            echo "若为文档示例类假值（如 someone@example.com），请白名单化并在 PR 说明，勿直接放行。"
+            exit 1
+          fi
+          echo "dist PII 扫描：0 命中"
+
+      - name: Summary（检查实况）
+        if: always()
+        run: |
+          {
+            echo "## CI 检查实况（本 run 实际执行项）"
+            echo "- 分支: \`${GITHUB_REF_NAME}\`（PR 源分支: \`${GITHUB_HEAD_REF:-非PR}\`）"
+            echo "- scope:check / build / dist PII 扫描: 本 run 步骤状态见左侧 Steps"
+            echo "- validate: $( [ -f scripts/validate-content.mjs ] && echo '脚本存在，见 validate 步骤结果' || echo '⏳ PENDING-T2.1（未执行，不视为通过）' )"
+          } >> "$GITHUB_STEP_SUMMARY"
