@@ -29,6 +29,12 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          # PR 事件默认检出 refs/pull/N/merge（合并提交）。若用 merge ref，
+          # `origin/main...HEAD` 会把 main 自分歧点以来的改动算成 PR 改动，
+          # 导致 A2 合并 content/** 后旧 PR 被误判越界。改为检出 PR head SHA，
+          # 使三点 diff 严格等于"本分支相对 base 的改动"（C-17 第 1 条）。
+          # 代价：build 校验的是 PR head 而非合并后结果，已在 PR 中标注。
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
       - name: Setup Node（.nvmrc）
         uses: actions/setup-node@v4
