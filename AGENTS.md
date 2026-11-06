@@ -146,6 +146,7 @@ node qa/scripts/*.mjs  # QA 脚本，不经 package.json
 | 公开仓库 | 任何提交立即公开可查，删了也在历史里 | 私密内容一律不入库，放 `F:\141-vault\`，仓库只留 `vault_ref` |
 | 多 worktree 共用 node_modules | 依赖版本错乱 | 每个 worktree 各自 `npm ci` |
 | 目录含中文/空格 | Windows 下部分脚本路径出错 | 仓库路径固定 `F:\141`、`F:\141-wt\<角色>`，不要改成中文目录 |
+| 本地 `npm run build` 中途失败、且无 `dist/data` / `dist/pagefind` | astro 清理旧 `dist` 被 safe-delete 拒绝（常见原因：静态服务器仍占用 dist 内文件） | 先停掉 preview/临时服务器，或 `rm -rf dist` 后再 build；CI 是干净工作区，不受影响 |
 
 ## 10. 文档地图
 
