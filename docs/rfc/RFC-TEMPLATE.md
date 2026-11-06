@@ -23,7 +23,7 @@
 | `scripts/validate-content.mjs` | 新增/删除哪些校验编号 |
 | `content/**` | 需要迁移多少条 |
 | 页面 / 组件 | 哪些 |
-| 数据产物 | `content.json` / `graph.json` 是否变 |
+| 数据产物 | `content.json` 是否变（v0.1 无其他产物） |
 
 ## 4. 迁移方案
 
