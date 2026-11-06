@@ -1,49 +1,56 @@
 ---
-const base = import.meta.env.BASE_URL;
----
-<!doctype html>
-<html lang="zh-CN">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="description" content="Personal Knowledge OS — 个人知识库站点（建设中）" />
-  <title>Personal Knowledge OS</title>
-  <style>
-    :root {
-      color-scheme: light;
-      --text: #1f2933;
-      --muted: #6b7280;
-      --line: #e5e7eb;
-    }
-    * { box-sizing: border-box; }
-    body {
-      margin: 0;
-      font-family: system-ui, -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
-      color: var(--text);
-      line-height: 1.7;
-      max-width: 720px;
-      padding: 4rem 1.25rem;
-      margin-inline: auto;
-    }
-    h1 { font-size: 1.75rem; margin: 0 0 0.5rem; }
-    .muted { color: var(--muted); }
-    .card {
-      border: 1px solid var(--line);
-      border-radius: 12px;
-      padding: 1.25rem 1.5rem;
-      margin-top: 2rem;
-    }
-    code { background: #f3f4f6; padding: 0.1em 0.35em; border-radius: 4px; }
-  </style>
-</head>
-<body>
-  <h1>Personal Knowledge OS</h1>
-  <p class="muted">个人知识库 · 可追溯 · 可搜索 · 建设中</p>
+// 首页 — T3.1 静态首屏（不依赖内容数据，真实内容在 T3.2 接入）
+import Base from "../layouts/Base.astro";
 
-  <div class="card">
-    <p><strong>T1.2 最小可运行页面</strong></p>
-    <p>此页面用于验证工具链：Astro 5 + GitHub Pages（base <code>/141/</code>）。内容、搜索、复盘与错误经验将在后续里程碑接入，契约见 <code>docs/CONTRACTS.md</code>。</p>
-    <p class="muted">当前版本：v0.0.1（Phase 1 脚手架）。</p>
+const rawBase = import.meta.env.BASE_URL;
+const base = rawBase.endsWith("/") ? rawBase : `${rawBase}/`;
+
+// 五类内容入口（对应 C-1 的五个内容域；路由在 T3.2 落地）
+const sections = [
+  {
+    name: "知识 Knowledge",
+    href: `${base}knowledge/`,
+    desc: "结构化的知识条目：来源可追溯、状态可标记、可信度可分级。",
+  },
+  {
+    name: "项目 Projects",
+    href: `${base}projects/`,
+    desc: "在做与做完的项目：技术栈、周期与可验证的结果。",
+  },
+  {
+    name: "复盘 Journal",
+    href: `${base}journal/`,
+    desc: "按日期沉淀的复盘：做了什么、学到什么、卡在哪里。",
+  },
+  {
+    name: "错误经验 Errors",
+    href: `${base}errors/`,
+    desc: "踩坑记录：症状、根因、修复与预防，避免重复犯错。",
+  },
+];
+---
+
+<Base title="Personal Knowledge OS">
+  <section class="hero">
+    <h1 class="hero__title">Personal Knowledge OS</h1>
+    <p class="hero__tagline">
+      一个内容优先的个人知识系统：把知识、项目、复盘与错误经验结构化管理，
+      每一条都可追溯来源、可被全文搜索。
+    </p>
+    <p class="hero__meta">
+      站点建设中 —— 当前为站点外壳（T3.1），内容将在后续里程碑接入。
+    </p>
+  </section>
+
+  <h2 class="section-title">内容入口</h2>
+  <div class="card-grid">
+    {
+      sections.map((s) => (
+        <a class="type-card" href={s.href}>
+          <p class="type-card__name">{s.name}</p>
+          <p class="type-card__desc">{s.desc}</p>
+        </a>
+      ))
+    }
   </div>
-</body>
-</html>
+</Base>
