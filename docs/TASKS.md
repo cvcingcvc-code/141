@@ -299,3 +299,50 @@ Wave 3              ── T4.3 导入流程、T4.4 部署、T5.1/T5.2 验收
 - **不得删除** `red-light.test.mjs` 里任何一条发布安全用例（R-08 / P-04 / V-019 / V-021 等）。
   快照断言可以随事实更新，**规则断言不能因为"要发布"而被删掉或放宽**。
 - 不得为了让它上站而把 `sample` 改回 `true`，也不得用 Agent 身份填 `published_by`。
+
+## 14. Wave 3A 记录（2026-11-07，基线 `715ef29` → `69a38c5`）
+
+| 任务 | PR | main Commit | 状态 |
+| --- | --- | --- | --- |
+| T4.3 复盘导入（draft 默认、仓库外草稿、授权门控、路径安全） | #26 | `00ed1b3` | ✅ 已合并 |
+| T3.3 阅读体验与移动端可读性 | #27 | `69a38c5` | ✅ 已合并 |
+| T5.2 独立验收（Wave 3A） | — | — | ⏳ 待 A5 独立执行，A1 不代签 |
+| A2 笔记采集字段核对 | — | — | ⏳ 字段清单已覆盖 journal 五要素；新增模板后需收敛重复项（见 §14.3） |
+
+### 14.1 明天处理真实笔记的命令（已实测）
+
+```bash
+# 1) 生成草稿（默认写到仓库外 F:/141-vault/drafts，不会污染仓库）
+node scripts/import/new-journal.mjs --date 2026-11-08 --from F:/141-vault/intake/2026-11-08.md
+
+# 2) 看一眼会不会写出什么（不落盘）
+node scripts/import/new-journal.mjs --date 2026-11-08 --from note.md --dry-run
+
+# 3) 确认无误、要入库时才加 --authorize（写入 content/journal/<年>/<日期>.md）
+node scripts/import/new-journal.mjs --date 2026-11-08 --from note.md --authorize
+
+# 4) 校验 → 提 PR → 你本人审核合并
+npm run validate
+```
+
+笔记格式（`--from` 认得的结构）：第一行 `# 标题`、随后 1 段摘要、`## did` / `## learned` 各列出条目，
+可选 `## blocked` / `## tomorrow`。缺 did 或 learned 会**直接报错**，不会用占位符凑数。
+
+### 14.2 导入脚本的安全边界（逐条实测）
+
+| 约束 | 行为 |
+| --- | --- |
+| 默认输出 | 仓库外 `F:/141-vault/drafts/`，仓库 `git status` 保持干净 |
+| 入库 | 必须显式 `--authorize`；否则 `--out` 指向仓库内会被拒绝 |
+| 路径逃逸 | `--out` 用 `path.relative` 判定仓库内外；`--vault-ref` 拒绝 `../`、盘符、其它协议 |
+| 内容来源 | `did`/`learned`/`summary` 必须来自输入，缺失即失败 |
+| 发布 | 永不写 `published: true`、`published_by`、`approved_by`；`approved_at: null` |
+| 覆盖 | 同日期已存在需 `--force`；已 `published: true` 的一律拒绝覆盖 |
+| 自动化 | 不 commit、不 PR、不 merge、不部署 |
+
+### 14.3 遗留（下一轮最小动作）
+
+1. **重复模板**：`src/content/intake/journal-template.md.template`（A2 的素材采集表）与
+   `templates/journal-template.md`（A4 的入库模板）并存，用途不同但名字相近，需在 A2 目录里一句话说明“哪个是采集表、哪个是入库模板”。
+2. **A5 未签字**：Wave 3A 的独立验收仍需 A5 在独立窗口执行（含 360/768/1280 与对比度复测）。
+3. **错误经验无导入脚本**：只有模板，手工填写（T4.3 范围内，不扩）。
