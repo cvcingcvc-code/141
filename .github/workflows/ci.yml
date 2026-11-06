@@ -1,0 +1,90 @@
+# ci.yml — PR / main 门禁（T4.1 / A4）
+#
+# 编排（全部强制，缺失即红，不存在"跳过且视为通过"）：
+#   npm ci → scope:check（C-17）→ validate（A2）→ test（A2 回归）→ typecheck → build → dist PII 扫描
+#
+# 约定：
+# - workflow 名与 job 名均为 `ci`：check-run 名 = "ci"，供 T1.3 阶段 B 的
+#   required status checks 引用（名字必须与 `gh api .../check-runs` 实际输出一致，BRANCHES §4）。
+# - 所有步骤直接调用 `npm run <script>`：脚本由 A1 在 package.json 登记（C-11）。
+#   脚本不存在 → npm 直接 exit 1 → 红灯。**不允许用条件判断把缺失的检查变成绿色。**
+# - typecheck 内含 `astro sync`（否则 `astro:content` 类型缺失会误报）。
+
+name: ci
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout（full fetch，scope:check 需要 origin/main）
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          # PR 事件默认检出 refs/pull/N/merge（合并提交）。若用 merge ref，
+          # `origin/main...HEAD` 会把 main 自分歧点以来的改动算成 PR 改动，
+          # 导致内容目录合入后旧 PR 被误判越界。改为检出 PR head SHA，
+          # 使三点 diff 严格等于"本分支相对 base 的改动"（C-17 第 1 条）。
+          # 代价：build 校验的是 PR head 而非合并后结果，已在 PR 中标注。
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Setup Node（.nvmrc）
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: npm ci
+        run: npm ci
+
+      - name: scope:check（C-17 分支改动范围门禁，强制）
+        run: npm run scope:check
+
+      - name: validate（内容校验，强制）
+        run: npm run validate
+
+      - name: test（内容契约回归，强制）
+        run: npm test
+
+      - name: typecheck（astro sync + tsc --noEmit，强制）
+        run: npm run typecheck
+
+      - name: build
+        run: npm run build
+
+      # 产物 PII 扫描（C-18 第三道检查：dist/**）。工作树与 git 历史扫描由
+      # qa/scripts/privacy-scan.mjs 负责（T5.1），不在此重复。
+      - name: dist 产物 PII 扫描（C-18 L3，强制）
+        run: |
+          set -euo pipefail
+          PATTERNS='([A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}|sk-[A-Za-z0-9]{16,}|ghp_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|AKIA[0-9A-Z]{16}|PRIVATE KEY|1[3-9][0-9]{9})'
+          if [ ! -d dist ]; then
+            echo "::error::dist/ 不存在，构建未产出？"
+            exit 1
+          fi
+          HITS=$(grep -rInE "$PATTERNS" dist || true)
+          if [ -n "$HITS" ]; then
+            echo "::error::dist 产物命中疑似 PII/凭据（V-010 / C-18 L3）："
+            echo "$HITS"
+            echo "若命中示例类假值（@example.com），应先从内容中移除而不是放行。"
+            exit 1
+          fi
+          echo "dist PII 扫描：0 命中"
+
+      - name: Summary（检查实况）
+        if: always()
+        run: |
+          {
+            echo "## CI 检查实况"
+            echo "- 分支: \`${GITHUB_REF_NAME}\`（PR 源分支: \`${GITHUB_HEAD_REF:-非 PR}\`）"
+            echo "- 强制项：scope:check / validate / test / typecheck / build / dist PII"
+            echo "- 任一步骤缺失或失败即红灯；本工作流不包含条件跳过逻辑"
+          } >> "$GITHUB_STEP_SUMMARY"
