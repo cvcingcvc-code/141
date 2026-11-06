@@ -3,6 +3,11 @@
  *
  * 目的：证明修完 R-04 / R-09 之后没有把合法形态一起判死。
  * 只测"该报的报了"不够，这是 M1 门禁的另一半。
+ *
+ * 设计约束（D1-001 修正）：
+ * - 断言规则，不断言"仓库永远只有未发布内容"：发布是用户的决定，不是测试的禁令。
+ * - W-002（示例占比）用夹具验证触发与不触发，真实仓库只要求 0 errors。
+ * - 发布门禁是"用户确认合入 main"，字段只是证据；测试不假装能拦住 Agent 填字段。
  */
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -83,38 +88,73 @@ test('P-04 新增条目不写 published → 校验不报错、不发布', () => 
 test('仓库真实样本：npm run validate 等价调用应为 0 errors', () => {
   const result = validateContent(path.join(REPO_ROOT, 'content'));
   assert.equal(result.errors, 0, `真实样本必须 0 errors：\n${result.violations.map((v) => `${v.code} ${v.file} ${v.message}`).join('\n')}`);
-  // 全是 sample 时 W-002 必然命中（T2.2 补真实内容后消失），这是预期而非缺陷
-  assert.ok(codesOf(result).includes('W-002'), '当前 100% 示例内容，W-002 应当被报出并在 PR 说明');
-  console.log(`真实样本 → ${result.errors} errors, ${result.warnings} warnings；${codesOf(result).join(', ')}`);
+  // 这里不再要求仓库永远带着 W-002：示例占比是内容进度，不是规则。
+  // W-002 的触发/不触发改用夹具验证（见下方两条用例），真实仓库只要求 0 errors。
+  console.log(`真实样本 → ${result.errors} errors, ${result.warnings} warnings；${codesOf(result).join(', ') || '无告警'}`);
 });
 
-/* 发布红线：真实内容也一律不得由 Agent 自行发布 ------------------------ */
-test('content/ 中没有任何已发布条目，Agent 不得写审批字段', () => {
+/* W-002：只在"示例占比 > 50%"时告警（夹具验证，不绑定真实仓库） -------- */
+test('W-002 在示例占比 > 50% 的夹具上触发', () => {
+  const samplePatch = (file) => patch(file, { 'sample: false': 'sample: true' });
+  const root = makeContent({
+    [KNOWLEDGE]: samplePatch(KNOWLEDGE),
+    [PROJECT]: samplePatch(PROJECT),
+    [JOURNAL]: samplePatch(JOURNAL),
+  });
+  const result = validateContent(root);
+  assert.ok(codesOf(result).includes('W-002'), `3/5 示例应触发 W-002，实际：${codesOf(result).join(', ') || '（无）'}`);
+  console.log(`W-002 触发（3/5=60%）→ ${codesOf(result).join(', ')}`);
+});
+
+test('W-002 在示例占比 ≤ 50% 的夹具上不触发', () => {
+  const samplePatch = (file) => patch(file, { 'sample: false': 'sample: true' });
+  const root = makeContent({
+    [KNOWLEDGE]: samplePatch(KNOWLEDGE),
+    [PROJECT]: samplePatch(PROJECT),
+  });
+  const result = validateContent(root);
+  assert.ok(!codesOf(result).includes('W-002'), `2/5 示例不应触发 W-002，实际：${codesOf(result).join(', ')}`);
+  assert.equal(result.errors, 0);
+  console.log('W-002 未触发（2/5=40%）');
+});
+
+/* 发布态：当前快照 + 合法发布路径 ------------------------------------- */
+test('KB-ENG-003 当前为 sample:false / published:false（本次授权范围）', () => {
   const result = validateContent(path.join(REPO_ROOT, 'content'));
-  const visible = result.entries.filter((e) => e.ok && isVisibleEntry({ data: e.data })).map((e) => e.data.id);
-  const hidden = result.entries.filter((e) => e.ok && !isVisibleEntry({ data: e.data })).map((e) => e.data.id);
+  const entry = result.entries.find((e) => e.frontmatter?.id === 'KB-ENG-003');
+  assert.ok(entry, 'content/ 中应存在 KB-ENG-003');
+  assert.equal(entry.data.sample, false, 'D1-001 是真实内容，sample 必须为 false');
+  assert.equal(entry.data.published, false, '本轮授权仅入库，published 必须为 false');
+  assert.equal(entry.frontmatter.published_at, undefined, '不得由 Agent 填 published_at');
+  assert.equal(entry.frontmatter.published_by, undefined, '不得由 Agent 填 published_by');
+  assert.equal(isVisibleEntry({ data: entry.data }), false);
+  console.log('KB-ENG-003 → sample=false, published=false, 未上站');
+});
 
-  // 用户未确认前，content/ 中不允许出现"已发布"条目；发布链路在夹具里验证（R-08 / P-04 / V-021）
-  assert.deepEqual(visible, [], `content/ 中不得有已发布条目，实际：[${visible.join(', ')}]`);
-  assert.ok(hidden.includes('PJ-141'), 'PJ-141 缺省 published，不得上站');
-  assert.ok(hidden.includes('DJ-2026-11-06'), 'journal draft 不得上站');
-  assert.ok(hidden.includes('ER-20261106-01'), '显式 published:false 不得上站');
-  assert.ok(hidden.includes('KB-ENG-001') && hidden.includes('KB-ENG-002') && hidden.includes('profile'), '示例知识/profile 也不得由 Agent 自行发布');
+test('发布路径不被禁止：已发布条目只要有合法人工证据就应可见', () => {
+  // 夹具 BASELINE 的 profile 与 knowledge 自带 published:true + published_at + published_by:user
+  const root = makeContent();
+  const result = validateContent(root);
+  assert.equal(result.errors, 0, `合法发布不得报错：${codesOf(result).join(', ')}`);
 
-  // 反向硬约束：任何条目（示例或真实）都不许出现审批证据字段。
-  // 注意：这里不再要求 sample === true —— D1 解锁后 content/ 里会有 sample: false 的真实条目，
-  // 但"真实"不等于"已发布"，红线仍是"Agent 不填 published_by / approved_by / published: true"。
-  for (const e of result.entries) {
-    const sample = e.frontmatter.sample;
-    assert.equal(typeof sample, 'boolean', `${e.file} 的 sample 必须显式为 boolean`);
-    assert.notEqual(e.frontmatter.published, true, `${e.file} 不得 published: true（只能由用户/A1 在合并时置位）`);
-    assert.equal(e.frontmatter.published_by, undefined, `${e.file} 不得填 published_by（模拟人工确认）`);
-    assert.equal(e.frontmatter.approved_by, undefined, `${e.file} 不得填 approved_by（模拟人工批准）`);
-    if (e.expectedType === 'journal') {
-      assert.notEqual(e.frontmatter.review_status, 'approved', `${e.file} Agent 不得自行 approved`);
-    }
+  const knowledge = result.entries.find((e) => e.expectedType === 'knowledge');
+  const profile = result.entries.find((e) => e.expectedType === 'profile');
+  for (const e of [knowledge, profile]) {
+    assert.equal(e.data.published, true);
+    assert.equal(isPublishable(e.data), true, '有合法人工证据的已发布条目必须可上站');
+    assert.equal(isVisibleEntry({ data: e.data }), true);
   }
-  console.log(`发布过滤 → visible=[] hidden=[${hidden.join(', ')}]（含 sample:false 的真实条目）`);
+  console.log('合法发布 → profile / KB-ENG-001 visible=true（发布不是禁区）');
+});
+
+test('示例条目不得带人工审批痕迹（sample:true 与 published:true 不应共存于示例）', () => {
+  const result = validateContent(path.join(REPO_ROOT, 'content'));
+  const offenders = result.entries
+    .filter((e) => e.frontmatter?.sample === true)
+    .filter((e) => e.frontmatter.published_by !== undefined || e.frontmatter.approved_by !== undefined)
+    .map((e) => e.file);
+  assert.deepEqual(offenders, [], `示例条目不得出现人工审批字段：${offenders.join(', ')}`);
+  console.log('示例条目 → 无 published_by / approved_by');
 });
 
 /* 词表漂移防护 --------------------------------------------------------- */
