@@ -5,9 +5,7 @@ title: 示例 Profile（占位，待用户补充）
 summary: 本文件是 T2.1 的示例数据，用于验证 profile 集合的契约与发布链路，不含任何真实个人信息。
 created: 2026-11-06
 updated: 2026-11-06
-published: true
-published_at: 2026-11-06
-published_by: user
+published: false
 tags: [knowledge-base, documentation]
 sample: true
 vault_ref: null
@@ -23,6 +21,7 @@ vault_ref: null
 
 ## 字段说明
 
-- 本条的 `published: true` + `published_by: user` 是**示例形态**，用于证明"显式发布"这条链路可用。
-- 其余示例条目分别覆盖"缺省不写 `published`（默认不发布）"与"显式 `published: false`"两种形态。
+- 本条 `published: false`：示例数据不由 Agent 自行发布，必须由用户确认后才能置 `true`。
+- `published: true` 的形态（含 `published_at` / `published_by: user`）只在测试夹具里验证，
+  不写进真实内容目录——避免把模拟审批标成真实个人确认。
 - 正文不含真实姓名、联系方式、家庭或健康细节（P0-1）。

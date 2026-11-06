@@ -5,9 +5,7 @@ title: Git rebase 与 merge 的取舍
 summary: 用一条可复述的判断规则区分何时该 rebase、何时该 merge，避免把共享历史改坏。
 created: 2026-11-06
 updated: 2026-11-06
-published: true
-published_at: 2026-11-06
-published_by: user
+published: false
 tags: [git, workflow]
 sample: true
 vault_ref: null

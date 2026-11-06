@@ -89,19 +89,24 @@ test('仓库真实样本：npm run validate 等价调用应为 0 errors', () => 
 });
 
 /* T2.1 DoD #4：真实样本的发布态分布 ---------------------------------- */
-test('真实样本同时覆盖显式发布 / 缺省不发布 / 显式不发布 / draft 四种形态', () => {
+test('真实样本全部未发布：Agent 不得把模拟审批写成 published_by: user', () => {
   const result = validateContent(path.join(REPO_ROOT, 'content'));
   const visible = result.entries.filter((e) => e.ok && isVisibleEntry({ data: e.data })).map((e) => e.data.id);
   const hidden = result.entries.filter((e) => e.ok && !isVisibleEntry({ data: e.data })).map((e) => e.data.id);
 
-  assert.deepEqual(visible.sort(), ['KB-ENG-001', 'KB-ENG-002', 'profile'].sort(), '可上站的只能是显式 published:true 的三条');
+  // 用户未确认前，content/ 中不允许出现"已发布"条目；发布链路在夹具里验证（R-08 / P-04 / V-021）
+  assert.deepEqual(visible, [], `content/ 中不得有已发布条目，实际：[${visible.join(', ')}]`);
   assert.ok(hidden.includes('PJ-141'), 'PJ-141 缺省 published，不得上站');
   assert.ok(hidden.includes('DJ-2026-11-06'), 'journal draft 不得上站');
   assert.ok(hidden.includes('ER-20261106-01'), '显式 published:false 不得上站');
+  assert.ok(hidden.includes('KB-ENG-001') && hidden.includes('KB-ENG-002') && hidden.includes('profile'), '示例知识/profile 也不得由 Agent 自行发布');
+
+  // 反向硬约束：任何样本都不许出现 published_by（模拟人工确认）
   for (const e of result.entries) {
     assert.equal(e.frontmatter.sample, true, `${e.file} 必须标注 sample: true`);
+    assert.equal(e.frontmatter.published_by, undefined, `${e.file} 不得填 published_by（模拟人工确认）`);
   }
-  console.log(`发布过滤 → visible=[${visible.join(', ')}] hidden=[${hidden.join(', ')}]`);
+  console.log(`发布过滤 → visible=[] hidden=[${hidden.join(', ')}]`);
 });
 
 /* 词表漂移防护 --------------------------------------------------------- */

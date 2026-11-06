@@ -5,9 +5,7 @@ title: Schema 校验只能证明形状合规
 summary: 区分"结构合规"与"内容为真"两种不同的质量断言，避免把校验器绿灯当成事实核验。
 created: 2026-11-06
 updated: 2026-11-06
-published: true
-published_at: 2026-11-06
-published_by: user
+published: false
 tags: [testing, architecture]
 sample: true
 vault_ref: null
