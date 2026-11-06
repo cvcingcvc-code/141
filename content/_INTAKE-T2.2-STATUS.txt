@@ -1,0 +1,71 @@
+# T2.2 待确认内容报告（状态：BLOCKED-D1）
+
+- 日期：2026-11-06　分支：`feat/a2-content`　基线：`4bf302e`（main）
+- 契约：`docs/CONTRACTS.md` v1.0.0-rc4；任务：`docs/TASKS.md` §3 T2.2
+- 决策依据：`docs/AUDIT.md` §5 D1、`docs/TASKS.md` §10、PR #11 Wave 2 冻结 §11.6
+- 本文件不是内容条目（非 `.md` 扩展名），不进 collections / 构建产物 / 搜索索引
+- 与 `src/content/intake/pending-confirmation.md`（并行 A2 会话产出的逐项确认清单）互补：
+  那里是「要问用户什么」，本文件是「本轮实际核对到了什么 + DoD 差距快照」，两者不互相替代
+
+## 1. 状态结论
+
+**BLOCKED-D1**：未获得任何「用户明确提供并允许入库」的可公开个人素材。
+按 D1（真实内容由用户确认后才发布，不得编造）与 Wave 2 §11.6，本轮：
+
+- 新增真实内容条目：**0 条**（未把任何 `sample: true` 转正，未编造经历/成绩/日期）
+- 新增标签：**0 个**（`docs/TAXONOMY.md` 不做无依据微调）
+- 新增知识关联：**0 条**
+- 修改 `published` / `published_by` / `review_status`：**0 处**（现有 6 条样本全部保持原状）
+
+## 2. 素材盘点（实际执行的检查）
+
+| 来源 | 检查方式 | 结果 |
+| --- | --- | --- |
+| 本轮用户指令 | 原文：「目前没有获得可公开个人素材的授权」 | 0 条可入库素材 |
+| GitHub 公开 issue | `gh issue list --state all` → `[]` | 0 条 |
+| 仓库 `content/**` | 6 个 `.md`，全部 `sample: true`，`published` 为 false 或缺省 | 0 条真实条目 |
+| 仓库外 `F:\141-vault\` | 仅 `README.md`（说明文件），无素材文件 | 0 条 |
+| 历史聊天 / 云资料 | 按用户指令**不检索、不提取**隐私内容 | 不采集 |
+
+合计可入库素材：**0 条**。
+
+## 3. 来源核对（对现有 6 条示例，只读核对）
+
+| id | type | sample | published | sources | 关联字段 | 结论 |
+| --- | --- | --- | --- | --- | --- | --- |
+| profile | profile | true | false | 无该字段 | 无 | 示例，非用户素材 |
+| KB-ENG-001 | knowledge | true | false | 1 条（公开技术书） | `related: [KB-ENG-002]` | 示例来源，不得当作用户素材或真实经历 |
+| KB-ENG-002 | knowledge | true | false | 0 条（seed 示例） | `related: [KB-ENG-001]` | 示例，站点应显示「未标注来源」 |
+| PJ-141 | project | true | 缺省 | 无该字段 | `linked_knowledge: [KB-ENG-001]` | 示例，缺省即不发布（P-04） |
+| DJ-2026-11-06 | journal | true | 缺省 | 无该字段 | `linked_knowledge: [KB-ENG-002]` | 示例，`review_status: draft`，不得自行 approve |
+| ER-20261106-01 | error | true | false | 无该字段 | 无 | 示例 |
+
+- 6 条全部 `sample: true`、`vault_ref` 为空、无 `published_by`；关联仅指向仓库内其它示例 id。
+- 核对结论：现有来源与关联**全部属于示例数据**，与本轮「用户素材来源核对」无关，不得据此生成真实内容。
+- 原始解析结果：`F:\141-evidence\T2.2\source-audit.json`（逐条 frontmatter，真实脚本输出）。
+
+## 4. 待用户确认清单（全部未确认）
+
+- [ ] 1. 按 `content/_INTAKE-TEMPLATE.md.template` 提供素材，明确写出「允许写入公开仓库」；profile 1 条 + 其余四类各 ≥1 条
+- [ ] 2. 每条素材的来源与可公开性确认（含 knowledge 的 `sources` 明细与可核验性）
+- [ ] 3. 标签确认：沿用 TAXONOMY 现有标签，或给出新标签名 + 定义 + 理由
+- [ ] 4. 知识关联确认：明确指定 `related` / `linked_*` 的目标 id 对
+- [ ] 5. 脱敏确认：无 L3 原文；L3 只以 `vault_ref` 指针存在
+- [ ] 6. 发布确认：用户确认合入 main 后，由用户决定是否 `published: true`（Agent 不改）
+- [ ] 7. 解除 BLOCKED-D1 后，确认由 A2 另开 PR 完成真实内容填充，本 PR 不代替
+
+## 5. DoD 差距（不得夸大）
+
+| T2.2 DoD | 状态 |
+| --- | --- |
+| 五类各 ≥1 真实条目且用户确认 | 未达成（0/5，BLOCKED-D1） |
+| W-002（样本占比 >50%）消失 | 未达成（6/6 样本） |
+| 标签与 TAXONOMY 一致 | 无需改动（0 新标签，0 处不一致） |
+
+按 AUDIT §5：在用户确认真实内容之前，「真实内容」验收项只能以「样本已标注 + 真实条目待补」存在，
+**不会**用编造内容凑过。
+
+## 6. 解锁条件 / 下一轮唯一目标
+
+唯一解锁条件：用户按模板提供并确认可入库素材。解锁后另开分支完成 T2.2 真实内容；
+本轮到此为止，不提前做 T3.2 / T4.2 或任何未规划功能。
