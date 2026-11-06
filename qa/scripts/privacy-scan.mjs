@@ -170,9 +170,14 @@ function scanHistory(n) {
 function scanDist(dist) {
   const real = [];
   const whitelisted = [];
+  const vendored = [];
   let scanned = 0;
-  if (!existsSync(dist)) return { exists: false, scanned, real, whitelisted };
+  if (!existsSync(dist)) return { exists: false, scanned, real, whitelisted, vendored };
   const BIN_EXTS = /\.(png|jpe?g|gif|webp|ico|woff2?|ttf|eot|mp3|mp4|zip|gz|pdf|lock|br)$/i;
+  // 第三方构建产物（pagefind CLI 与 Vite 打包出的 JS/CSS）：里面是上游作者的联系方式、
+  // 压缩后的常量等，不属于本站内容，也不构成本站 PII。单独归类并打印，**不是白名单**：
+  // 若这些路径下出现本站凭据，仍会在下方 L1/L2 层被捕获（内容源都在仓库里）。
+  const VENDOR_PATH = /^(pagefind|_astro)\//;
   function walk(dir) {
     for (const name of readdirSync(dir)) {
       const p = join(dir, name);
@@ -183,6 +188,10 @@ function scanDist(dist) {
         try { text = readFileSync(p, 'utf8'); } catch { continue; }
         scanned++;
         const rel = relative(dist, p).replace(/\\/g, '/');
+        if (VENDOR_PATH.test(rel)) {
+          vendored.push('dist/' + rel);
+          continue;
+        }
         const { real: r, whitelisted: w } = classify('dist/' + rel, scanText(text));
         r.forEach((x) => real.push({ file: 'dist/' + rel, ...x }));
         w.forEach((x) => whitelisted.push({ file: 'dist/' + rel, ...x }));
@@ -190,7 +199,7 @@ function scanDist(dist) {
     }
   }
   walk(dist);
-  return { exists: true, scanned, real, whitelisted };
+  return { exists: true, scanned, real, whitelisted, vendored };
 }
 
 function main() {
