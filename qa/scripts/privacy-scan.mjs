@@ -225,7 +225,7 @@ function main() {
   console.log('--- L3 构建产物 ---');
   const l3 = scanDist(args.dist);
   if (!l3.exists) console.log('  dist/ 不存在（尚未构建或已清理）');
-  else console.log(`  扫描 ${l3.scanned} 个文本文件，真实命中 ${l3.real.length}，白名单 ${l3.whitelisted.length}`);
+  else console.log(`  扫描 ${l3.scanned} 个文本文件（另跳过 ${(l3.vendored || []).length} 个第三方打包产物：pagefind/_astro），真实命中 ${l3.real.length}，白名单 ${l3.whitelisted.length}`);
   l3.real.forEach((x) => console.log(`  [真实] ${x.file}:${x.line} ${x.label} ${x.value}`));
   l3.whitelisted.forEach((x) => console.log(`  [白名单] ${x.file}:${x.line} ${x.label} ${x.value} (${x.reason})`));
 
@@ -239,7 +239,7 @@ function main() {
   const out = {
     l1: { scanned: l1.scanned, real: l1.real, whitelisted: l1.whitelisted },
     l2: { commits: l2.commits, real: l2.real, whitelisted: l2.whitelisted },
-    l3: { exists: l3.exists, scanned: l3.scanned, real: l3.real, whitelisted: l3.whitelisted },
+    l3: { exists: l3.exists, scanned: l3.scanned, real: l3.real, whitelisted: l3.whitelisted, vendored: l3.vendored || [] },
     conclusion,
     exitCode: totalReal === 0 ? 0 : 1,
   };
