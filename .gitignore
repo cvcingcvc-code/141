@@ -6,3 +6,7 @@ dist/
 .env
 .env.*
 !/.env.example
+
+# QA 生成物（不应入库；由脚本运行时产生）
+qa/baseline/*.latest.json
+qa/baseline/privacy-scan.latest.json

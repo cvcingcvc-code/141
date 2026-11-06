@@ -1,0 +1,17 @@
+---
+// Footer — 站点页脚：版权、仓库链接、构建说明
+const rawBase = import.meta.env.BASE_URL;
+const base = rawBase.endsWith("/") ? rawBase : `${rawBase}/`;
+const year = new Date().getFullYear();
+---
+
+<footer class="site-footer">
+  <div class="container site-footer__inner">
+    <span>© {year} Personal Knowledge OS · 可追溯 · 可搜索</span>
+    <span>
+      <a href="https://github.com/cvcingcvc-code/141">GitHub 仓库</a>
+      ·
+      <a href={`${base}about/`}>关于本站</a>
+    </span>
+  </div>
+</footer>
