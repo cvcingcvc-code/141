@@ -1,14 +1,14 @@
 # ci.yml — PR / main 门禁（T4.1 / A4）
 #
-# 编排：npm ci → scope:check（C-17）→ validate（A2/T2.1）→ build → dist 产物 PII 扫描
+# 编排（全部强制，缺失即红，不存在"跳过且视为通过"）：
+#   npm ci → scope:check（C-17）→ validate（A2）→ test（A2 回归）→ typecheck → build → dist PII 扫描
 #
-# 重要约定：
+# 约定：
 # - workflow 名与 job 名均为 `ci`：check-run 名 = "ci"，供 T1.3 阶段 B 的
-#   required status checks 引用（名字必须与 gh api .../check-runs 实际输出一致，BRANCHES §4）。
-# - `npm run validate` / `npm run scope:check` 的 package.json script 由 A1 登记（C-11，A1 唯一所有权），
-#   本工作流直接调用 `node scripts/*.mjs`，不依赖 script 别名。
-# - A2 的 scripts/validate-content.mjs 未落地前（T2.1 未合并），validate 步骤在 CI 中
-#   真实跳过（Skipped）并打 ::warning::，绝不显示为绿色通过；A2 合并后必须在 main 完整重跑验证。
+#   required status checks 引用（名字必须与 `gh api .../check-runs` 实际输出一致，BRANCHES §4）。
+# - 所有步骤直接调用 `npm run <script>`：脚本由 A1 在 package.json 登记（C-11）。
+#   脚本不存在 → npm 直接 exit 1 → 红灯。**不允许用条件判断把缺失的检查变成绿色。**
+# - typecheck 内含 `astro sync`（否则 `astro:content` 类型缺失会误报）。
 
 name: ci
 
@@ -31,7 +31,7 @@ jobs:
           fetch-depth: 0
           # PR 事件默认检出 refs/pull/N/merge（合并提交）。若用 merge ref，
           # `origin/main...HEAD` 会把 main 自分歧点以来的改动算成 PR 改动，
-          # 导致 A2 合并 content/** 后旧 PR 被误判越界。改为检出 PR head SHA，
+          # 导致内容目录合入后旧 PR 被误判越界。改为检出 PR head SHA，
           # 使三点 diff 严格等于"本分支相对 base 的改动"（C-17 第 1 条）。
           # 代价：build 校验的是 PR head 而非合并后结果，已在 PR 中标注。
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
@@ -45,39 +45,24 @@ jobs:
       - name: npm ci
         run: npm ci
 
-      - name: scope:check（C-17 分支改动范围门禁）
-        run: node scripts/check-scope.mjs
+      - name: scope:check（C-17 分支改动范围门禁，强制）
+        run: npm run scope:check
 
-      # A2/T2.1 未合并时该脚本不存在：让 validate 步骤真实「跳过」（灰色 Skipped），
-      # 而不是显示绿色 ✓ 让人误读为"校验通过"。hashFiles 在 checkout 之后求值。
-      - name: validate（内容校验，A2）
-        if: ${{ hashFiles('scripts/validate-content.mjs') != '' }}
-        run: |
-          if node -e "process.exit(require('./package.json').scripts.validate ? 0 : 1)" 2>/dev/null; then
-            echo ">> package.json 已登记 validate script，执行 npm run validate"
-            npm run validate
-          else
-            echo "::warning::package.json 未登记 validate script（待 A1 补登记），直接执行校验器"
-            node scripts/validate-content.mjs
-          fi
+      - name: validate（内容校验，强制）
+        run: npm run validate
 
-      - name: validate 未落地（PENDING-T2.1，本检查未执行、不算通过）
-        if: ${{ hashFiles('scripts/validate-content.mjs') == '' }}
-        run: |
-          echo "::warning::validate 未落地（T2.1/A2 未合并）——本检查未执行，不代表校验通过。A2 合并后必须在 main 完整重跑 CI。"
-          {
-            echo "## CI 检查实况"
-            echo "- scope:check: 已执行"
-            echo "- validate: ⏳ PENDING-T2.1（scripts/validate-content.mjs 不存在，步骤已跳过，不视为通过）"
-            echo "- build / dist PII 扫描: 见后续步骤"
-          } >> "$GITHUB_STEP_SUMMARY"
+      - name: test（内容契约回归，强制）
+        run: npm test
+
+      - name: typecheck（astro sync + tsc --noEmit，强制）
+        run: npm run typecheck
 
       - name: build
         run: npm run build
 
-      # 产物 PII 扫描（C-18 三道检查之一：dist/**）。工作树与 git 历史扫描由 A5 的
+      # 产物 PII 扫描（C-18 第三道检查：dist/**）。工作树与 git 历史扫描由
       # qa/scripts/privacy-scan.mjs 负责（T5.1），不在此重复。
-      - name: dist 产物 PII 扫描（C-18 L3）
+      - name: dist 产物 PII 扫描（C-18 L3，强制）
         run: |
           set -euo pipefail
           PATTERNS='([A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}|sk-[A-Za-z0-9]{16,}|ghp_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|AKIA[0-9A-Z]{16}|PRIVATE KEY|1[3-9][0-9]{9})'
@@ -85,12 +70,11 @@ jobs:
             echo "::error::dist/ 不存在，构建未产出？"
             exit 1
           fi
-          # -I 跳过二进制（pagefind 索引等）
           HITS=$(grep -rInE "$PATTERNS" dist || true)
           if [ -n "$HITS" ]; then
             echo "::error::dist 产物命中疑似 PII/凭据（V-010 / C-18 L3）："
             echo "$HITS"
-            echo "若命中文档示例类假值，请白名单化并在 PR 中说明，勿直接放行。"
+            echo "若命中示例类假值（@example.com），应先从内容中移除而不是放行。"
             exit 1
           fi
           echo "dist PII 扫描：0 命中"
@@ -99,8 +83,8 @@ jobs:
         if: always()
         run: |
           {
-            echo "## CI 检查实况（本 run 实际执行项）"
-            echo "- 分支: \`${GITHUB_REF_NAME}\`（PR 源分支: \`${GITHUB_HEAD_REF:-非PR}\`）"
-            echo "- scope:check / build / dist PII 扫描: 本 run 步骤状态见左侧 Steps"
-            echo "- validate: $( [ -f scripts/validate-content.mjs ] && echo '脚本存在，见 validate 步骤结果' || echo '⏳ PENDING-T2.1（步骤 Skipped，未执行、不视为通过）' )"
+            echo "## CI 检查实况"
+            echo "- 分支: \`${GITHUB_REF_NAME}\`（PR 源分支: \`${GITHUB_HEAD_REF:-非 PR}\`）"
+            echo "- 强制项：scope:check / validate / test / typecheck / build / dist PII"
+            echo "- 任一步骤缺失或失败即红灯；本工作流不包含条件跳过逻辑"
           } >> "$GITHUB_STEP_SUMMARY"

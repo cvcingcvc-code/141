@@ -1,20 +1,25 @@
-# deploy.yml — GitHub Pages 发布（T4.1 / A4，编排按 TASKS T4.1 产出 3）
+# deploy.yml — GitHub Pages 发布（T4.1 / A4）
 #
-# 链路：push main → npm ci → build → upload-pages-artifact → deploy-pages
+# ⚠️ 当前状态：**仅手动触发**（workflow_dispatch + 显式确认输入）。
+#    原因：首次公开部署需用户明确批准（Wave 1 集成指令 B2）；main 合入不得自动公开站点。
+#    T4.4 首次部署验收、且用户批准后，才允许恢复 `push: branches: [main]`。
 #
-# ⚠️ 部署前置条件（合并本 workflow 所在 PR 之前必须由用户/A1 完成，否则 main 上的 deploy run 会红）：
+# 链路（手动触发）：npm ci → validate（强制）→ build → upload-pages-artifact → deploy-pages
+#
+# 前置条件（触发前必须满足）：
 #   1. 仓库 Settings → Pages → Source 选择 "GitHub Actions"；
-#   2. 本 workflow 需要 permissions: pages:write + id-token:write（已声明）；
-#   3. 仅从 main 构建（CONTRACTS C-3：deploy 只从 main 构建 = "用户确认合入 main 后才上站"的门禁）。
-#
-# 注：T4.1 只交付 workflow 编排，不执行部署；首次真实部署与验收属 T4.4。
+#   2. 本 workflow 已在 main 上存在且 ci run 曾成功；
+#   3. 用户已明确批准本次公开部署。
 
 name: deploy
 
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
+    inputs:
+      confirm_public_deploy:
+        description: '输入 DEPLOY 表示确认公开部署到 GitHub Pages（未获用户批准请勿触发）'
+        required: true
+        default: 'hold'
 
 permissions:
   contents: read
@@ -28,6 +33,8 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    # 闸门：只有显式输入 DEPLOY 才继续，避免误触即公开
+    if: ${{ github.event.inputs.confirm_public_deploy == 'DEPLOY' }}
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -43,6 +50,10 @@ jobs:
 
       - name: npm ci
         run: npm ci
+
+      # 部署前的最后一道数据门禁：内容不合法就不发
+      - name: validate（内容校验，强制）
+        run: npm run validate
 
       - name: build
         run: npm run build
