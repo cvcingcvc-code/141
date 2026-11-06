@@ -271,3 +271,31 @@ Wave 3              ── T4.3 导入流程、T4.4 部署、T5.1/T5.2 验收
 - 公开仓库产物 `grep 鲸落` = 0 命中：测试内容从未进入公开产物。
 - `ACCEPTANCE M2`（0 断链）在 8 条已实现路由上成立（link-check 0 broken）；`M3` 搜索在隔离环境成立。
 - A5 独立验收 **未完成**（需独立窗口）；本记录不代签。
+
+## 13. D1-001 入库记录（2026-11-06，`6e730ba`）
+
+首篇真实内容 `KB-ENG-003`（《我用 5 个 AI Agent 开发个人知识库，终于明白了什么叫真正的协作》）已入库，
+**授权范围仅为公开仓库入库，不含网站发布**。
+
+| 项 | 值 |
+| --- | --- |
+| 文件 | `content/knowledge/kb-eng-003-five-agent-collaboration.md` |
+| 状态 | `published: false`、`sample: false`、`status: seed`、`confidence: low` |
+| 审批字段 | 无 `published_at` / `published_by`（未发布，不得补填） |
+| 用户决定 | confidence 保持 low；created/updated 保持 2026-11-06；related 保持 `[]`；文末「可核对证据」保留；标题不缩短 |
+| 原稿留底 | 仓库外 `F:/141-vault/intake/D1-001-original.md`（正文逐字一致，入库稿仅追加证据附录） |
+| 产物状态 | 未进入 `dist/data/content.json`、未生成详情页、未进入 Pagefind 索引（已实测） |
+
+### 13.1 将来正式发布这一条时必须做的事（不要跳过）
+
+1. 由**用户本人**把 `published` 改为 `true`，并补 `published_at` 与 `published_by: user`；
+2. **调整 `src/content/__tests__/positive.test.mjs` 中 `KB-ENG-003 当前为 sample:false / published:false` 这条快照断言**——
+   它是"本次授权范围"的快照，发布后必须改成新的事实，否则测试会红；
+3. 重跑 `npm run validate && npm test && npm run build`，确认 `content.json` 出现该条、详情页生成、搜索可命中；
+4. 部署仍走手动 `workflow_dispatch`，需用户明确批准。
+
+### 13.2 红线（当时与将来都成立）
+
+- **不得删除** `red-light.test.mjs` 里任何一条发布安全用例（R-08 / P-04 / V-019 / V-021 等）。
+  快照断言可以随事实更新，**规则断言不能因为"要发布"而被删掉或放宽**。
+- 不得为了让它上站而把 `sample` 改回 `true`，也不得用 Agent 身份填 `published_by`。
