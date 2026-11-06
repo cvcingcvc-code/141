@@ -88,7 +88,7 @@ test('Wave 2 §11.6 红线：content/ 中不得存在已发布 / 已批准迹象
 });
 
 test('采集资产本身不得含 PII 或凭据（它也要进公开仓库）', () => {
-  const docs = ['README.md', 'field-checklist.md', 'source-verification.md', 'pending-confirmation.md']
+  const docs = ['README.md', 'field-checklist.md', 'source-verification.md', 'pending-confirmation.md', 'intake-form.md']
     .map((name) => [name, read(name)])
     .map(([name, text]) => ({ name, text }));
   const PII = [
@@ -105,5 +105,58 @@ test('采集资产本身不得含 PII 或凭据（它也要进公开仓库）', 
     }
   }
   assert.deepEqual(hits, [], `采集资产含疑似敏感值：\n${hits.join('\n')}`);
-  console.log('采集资产 → PII 0 命中');
+  console.log(`采集资产 → ${docs.length} 份文档 PII 0 命中`);
+});
+
+test('采集资产位于 content/ 之外，正式内容加载器看不到它', () => {
+  const rel = path.relative(path.join(REPO_ROOT, 'content'), INTAKE).split(path.sep).join('/');
+  assert.ok(rel.startsWith('..'), `采集目录不得位于 content/ 内（实际相对路径 "${rel}"）`);
+
+  // content collections 的五个 loader base 只允许这五个子目录（src/content.config.ts / C-1）
+  const config = fs.readFileSync(path.join(REPO_ROOT, 'src/content.config.ts'), 'utf8');
+  const bases = [...config.matchAll(/base:\s*'\.\/content\/([^']+)'/g)].map((m) => m[1]).sort();
+  assert.deepEqual(bases, ['errors', 'journal', 'knowledge', 'profile', 'projects'], `loader base 异常：${bases.join(', ')}`);
+  console.log(`加载器隔离 → intake 在 content/ 之外；loader base 仅五个子目录`);
+});
+
+test('content/ 内不存在会被误解析为条目的文件（根目录只允许非 .md）', () => {
+  const contentRoot = path.join(REPO_ROOT, 'content');
+  const allowedDirs = new Set(['profile', 'knowledge', 'projects', 'journal', 'errors']);
+  const offenders = [];
+
+  const walk = (dir) => {
+    for (const item of fs.readdirSync(dir, { withFileTypes: true })) {
+      const abs = path.join(dir, item.name);
+      const relToContent = path.relative(contentRoot, abs).split(path.sep).join('/');
+      const top = relToContent.split('/')[0];
+      if (item.isDirectory()) {
+        if (relToContent.includes('/')) {
+          // 二级以下目录只在 journal/<YYYY>/ 合法
+          if (top !== 'journal') offenders.push(`${relToContent}/（不允许的多级目录）`);
+          walk(abs);
+        } else if (!allowedDirs.has(top)) {
+          offenders.push(`${relToContent}/（content/ 下不允许的新目录，C-1）`);
+        } else {
+          walk(abs);
+        }
+        continue;
+      }
+      if (!item.name.toLowerCase().endsWith('.md')) continue; // 非 .md 不会被内容解析器读取
+      if (relToContent.includes('/')) continue; // 五类目录内的条目由 validate 负责
+      offenders.push(`${relToContent}（content/ 根目录的 .md 会被当作条目 → V-012）`);
+    }
+  };
+
+  walk(contentRoot);
+  assert.deepEqual(offenders, [], `content/ 存在会被误解析的文件：\n${offenders.join('\n')}`);
+  console.log('解析隔离 → content/ 根目录无 .md，无未登记子目录');
+});
+
+test('填写表覆盖五类内容与授权块（采集闭环不缺项）', () => {
+  const form = read('intake-form.md');
+  const required = ['授权块', 'profile', 'knowledge', 'projects', 'journal', 'errors', '标签', '关联'];
+  const missing = required.filter((key) => !form.includes(key));
+  assert.deepEqual(missing, [], `填写表缺少：${missing.join(', ')}`);
+  assert.ok(form.includes('不要在本仓库内填写'), '填写表必须警告不要在公开仓库里填写');
+  console.log(`填写表 → 覆盖 ${required.length} 项（含授权块与五类）`);
 });

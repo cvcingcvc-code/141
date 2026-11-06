@@ -26,6 +26,7 @@
 | `field-checklist.md` | 五类内容的字段级采集清单（必填/可选/约束/对应校验编号），逐条对应 `CONTRACTS.md` C-3..C-8 |
 | `source-verification.md` | 来源核对：`kind` 怎么选、`locator` 要写到什么粒度、`status`/`confidence` 怎么判 |
 | `pending-confirmation.md` | **待用户确认清单**，当前状态 `BLOCKED-D1`（未获得可公开素材的授权） |
+| `intake-form.md` | **可直接复制到仓库外填写的素材表单**（授权块 + 五类填写块 + 来源核对 + 标签/关联），闭环采集 |
 
 ## 4. 本轮红线（Wave 2 §11.6 + 用户本轮指令）
 
@@ -37,7 +38,7 @@
 ## 5. 使用流程（拿到授权素材后）
 
 ```
-用户在 pending-confirmation.md 勾选/提供素材
+用户复制 intake-form.md 到 F:\141-vault\intake\ 填写（或在对话里按同样结构给）
   → 我按 field-checklist.md 结构化（id 生成、文件名、tags 取自 TAXONOMY）
   → 我按 source-verification.md 核对来源（不够 verified 就标 seed + low）
   → npm run validate（必须 0 errors）
@@ -52,3 +53,21 @@
 
 `BLOCKED-D1`：本轮未获得可公开个人素材的授权，`content/` 仍为 6 条 `sample: true` + `published: false`，
 站点没有任何真实条目（Wave 1 `docs/TASKS.md §10` 已记录同一事实）。详见 `pending-confirmation.md`。
+
+## 7. 与另一套采集资料的关系（待 A1 裁决，未删除）
+
+同一 worktree 中出现过第二个 A2 会话的产物，已由该会话自行提交到本分支（commit `c551134`，两条文件）：
+`content/_INTAKE-TEMPLATE.md.template`、`content/_INTAKE-T2.2-STATUS.txt`。
+我没有删除它们（归属未确认前不动别人的产出），差异如下：
+
+| 维度 | 本目录 `src/content/intake/`（4 份 + 1 表单） | `content/_INTAKE-*`（另一会话，2 份） |
+| --- | --- | --- |
+| 位置 | `src/content/` 下，**不在 `content/` 内** | `content/` 根目录 |
+| 防误解析 | 位置天然隔离：content collections 的 loader base 只指向五个子目录，`content/**` 扫描只认 `.md` | 靠扩展名规避（`.txt` / `.md.template`）；一旦有人改名成 `.md` 立即触发 `V-012` |
+| 结构 | 分工：字段清单 / 来源规则 / 待确认清单 / 填写表单 | 合并式：一份模板 + 一份状态报告 |
+| 字段深度 | 45 个字段逐条列出约束与对应 `V-*`/`W-*` 编号 | 类型级字段串 + 关键硬约束摘要 |
+| 自动化守卫 | 7 个测试（清单↔schema 对齐、编号白名单、`BLOCKED-D1` 齐全、发布红线、PII、`content/` 根目录无可解析 `.md`、本目录在 `content/` 之外） | 无测试 |
+| 与 A4 `templates/**` 的边界 | 已声明（A4 做可填空录入文件，本目录做采集与核对） | 未声明 |
+| 结论 | **建议保留这一套**（功能上已覆盖对方：对方模板的"授权块 + 填写项"已并入 `intake-form.md`） | 建议 A1 裁决是否移除；若决定保留对方那套，我按新归属把这 5 份搬过去合并 |
+
+裁决前两条都留在仓库里不冲突：两套都**不会**被 content loader 解析（见 §7 第 3 行的守卫测试）。
