@@ -1,26 +1,25 @@
 #!/usr/bin/env node
 /**
- * link-check.mjs — A5 独立 QA：站内链接 + C-9 路由契约探测
+ * link-check.mjs — A5 独立 QA：路由契约探测 + 站内链接爬取（Wave 2）
+ *
+ * 相比 T5.1 基线的增强：
+ *   1. 区分「固定路由」与「动态路由」两类，分别输出矩阵。
+ *   2. 动态路由额外做「无效 ID」探测：期望 HTTP 404 且正文含 404 特征，
+ *      以区分「正确的 404 处理」与「未实现导致的全 404」。
+ *   3. 对 localhost 目标自动 fallback 到 IPv6 [::1]（Astro preview 只监听 ::1）。
  *
  * 用法（不经 package.json，见 CONTRACTS C-11）：
  *   node qa/scripts/link-check.mjs [--base http://localhost:4321/141/] [--strict]
  *
- * 行为：
- *   1. 逐条探测 C-9 的 12 条路由，输出状态矩阵：
- *        200 → 可访问；404 → 未实现/待测试；其他 → 异常。
- *   2. 对可达页面抓取站内链接（<a>/<img>/<link>/<script>），递归检查，
- *      输出断链清单。
- *   3. 退出码：
- *        默认：0（存在断链或异常码时退 1）。
- *        --strict：额外要求 12 条路由全部 200，否则退 1（供 M2 门禁用）。
+ * 退出码：默认模式下，断链>0 或出现异常状态码 → 1。
+ *         --strict 额外要求：固定路由 + 动态有效 ID 全部 200，且无效 ID 全部正确 404。
  *
- * 依赖：Node 22（全局 fetch，零 npm 依赖）。
- * 注意：本脚本只读站点、不改业务代码；未实现路由如实标注，不伪装通过。
+ * 依赖：Node 22（全局 fetch，零 npm 依赖）。只读站点，不伪装通过。
  */
 
-import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
+import { writeFileSync } from 'node:fs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -30,108 +29,147 @@ function parseArgs(argv) {
     if (argv[i] === '--base') args.base = argv[++i];
     else if (argv[i] === '--strict') args.strict = true;
   }
-  // 规范化：base 以 / 结尾
   args.base = args.base.replace(/\/+$/, '') + '/';
   return args;
 }
 
-/**
- * C-9 契约的 12 条路由（v0.1）。动态路由用契约示例 id 占位。
- * 字段：path（相对 base）、desc（页面说明）。
- */
-const CONTRACT_ROUTES = [
-  { path: '', desc: '首页（profile + 最近 3 条 journal + 最近 3 条 knowledge）' },
-  { path: 'about/', desc: '个人介绍' },
+/** C-9 固定路由（8 条） */
+const STATIC_ROUTES = [
+  { path: '', desc: '首页' },
+  { path: 'about/', desc: '个人介绍（profile）' },
   { path: 'knowledge/', desc: '知识列表' },
-  { path: 'knowledge/kb-eng-001/', desc: '知识详情（示例 id KB-ENG-001）' },
   { path: 'projects/', desc: '项目列表' },
-  { path: 'projects/pj-141/', desc: '项目详情 + 关联条目纯文本链接（示例 id PJ-141）' },
-  { path: 'journal/', desc: '复盘列表（日期倒序，仅 approved）' },
-  { path: 'journal/2026-11-06/', desc: '复盘详情（示例日期 2026-11-06）' },
+  { path: 'journal/', desc: '复盘列表（仅 approved）' },
   { path: 'errors/', desc: '错误经验列表' },
-  { path: 'errors/er-20261106-01/', desc: '错误详情（示例 id ER-20261106-01）' },
   { path: 'search/', desc: '全文搜索（Pagefind）' },
-  { path: '404.html', desc: '未找到页（GitHub Pages 固定文件名）' },
+  { path: '404.html', desc: '未找到页（固定文件名）' },
 ];
 
-async function probe(url) {
+/** 动态路由有效 ID（契约示例 id；若 content.json 存在则以其 path 为准） */
+const DYNAMIC_VALID = [
+  { path: 'knowledge/kb-eng-001/', type: 'knowledge', id: 'KB-ENG-001' },
+  { path: 'projects/pj-141/', type: 'project', id: 'PJ-141' },
+  { path: 'journal/2026-11-06/', type: 'journal', id: 'DJ-2026-11-06' },
+  { path: 'errors/er-20261106-01/', type: 'error', id: 'ER-20261106-01' },
+];
+
+/** 动态路由无效 ID（不应存在的 id，期望落到 404） */
+const DYNAMIC_INVALID = [
+  { path: 'knowledge/qa-not-exist-999/', type: 'knowledge' },
+  { path: 'projects/pj-not-exist/', type: 'project' },
+  { path: 'journal/2099-01-01/', type: 'journal' },
+  { path: 'errors/er-99999999-99/', type: 'error' },
+];
+
+const NOTFOUND_MARKER = '没有找到这个页面';
+
+/** 若目标是 localhost 且失败，回退到 [::1]（preview 只监听 IPv6） */
+function fallbackIpv6(url) {
   try {
-    const res = await fetch(url, { redirect: 'manual' });
-    return { status: res.status };
-  } catch (e) {
-    return { status: 0, error: String(e.cause?.code || e.message) };
-  }
+    const u = new URL(url);
+    if (u.hostname === 'localhost') return url.replace('://localhost', '://[::1]');
+  } catch { /* ignore */ }
+  return null;
 }
 
-/** 从 HTML 提取站内链接，返回规范化后的绝对 URL 集合。 */
-function extractLinks(html, baseUrl) {
-  const links = new Set();
-  const attrRe = /(?:href|src)\s*=\s*["']([^"']+)["']/gi;
-  let m;
-  while ((m = attrRe.exec(html)) !== null) {
-    let href = m[1];
-    if (!href || href.startsWith('#')) continue; // 锚点 / 空
-    if (href.startsWith('data:') || href.startsWith('mailto:') || href.startsWith('tel:')) continue;
-    if (/^https?:\/\//i.test(href)) {
-      // 只关心站内：host 与 base 一致
-      try {
-        if (new URL(href).origin !== new URL(baseUrl).origin) continue;
-      } catch { continue; }
-      links.add(href);
-    } else {
-      links.add(new URL(href, baseUrl).href);
-    }
+async function probe(url) {
+  let lastErr;
+  const candidates = [url, fallbackIpv6(url)].filter(Boolean);
+  for (const c of candidates) {
+    try {
+      const res = await fetch(c, { redirect: 'manual' });
+      return { status: res.status, text: await res.text() };
+    } catch (e) { lastErr = e; }
   }
-  return links;
+  return { status: 0, error: String(lastErr?.cause?.code || lastErr?.message || lastErr) };
+}
+
+function verdictOf(status) {
+  if (status === 200) return '可访问';
+  if (status === 404) return '未实现/待测试';
+  if (status === 0) return '连接失败';
+  return `异常(${status})`;
 }
 
 async function main() {
   const args = parseArgs(process.argv.slice(2));
-  const base = args.base;
-  console.log('== A5 link-check ==');
-  console.log('base:', base, args.strict ? '(strict)' : '');
+  console.log('== A5 link-check（Wave 2）==');
+  console.log('base:', args.base, args.strict ? '(strict)' : '');
   console.log();
 
-  // 1) 路由矩阵
-  console.log('--- C-9 路由契约探测（12 条）---');
-  const routeResults = [];
-  for (const r of CONTRACT_ROUTES) {
-    const url = new URL(r.path, base).href;
+  // 1) 固定路由
+  console.log('--- 固定路由（8 条）---');
+  const fixed = [];
+  for (const r of STATIC_ROUTES) {
+    const url = args.base + r.path;
     const { status, error } = await probe(url);
-    let verdict;
-    if (status === 200) verdict = '可访问';
-    else if (status === 404) verdict = '未实现/待测试';
-    else if (status === 0) verdict = `连接失败(${error})`;
-    else verdict = `异常(${status})`;
-    routeResults.push({ path: r.path, status, verdict, desc: r.desc });
-    console.log(`  [${verdict}] ${status}  ${r.path || '(首页)'}  — ${r.desc}`);
+    const v = verdictOf(status);
+    fixed.push({ path: r.path, status, verdict: v, desc: r.desc });
+    console.log(`  [${v}] ${status}  ${r.path || '(首页)'}  — ${r.desc}${status === 0 ? '  (' + error + ')' : ''}`);
   }
 
-  // 2) 站内链接爬取（仅从 200 页面出发）
+  // 2) 动态路由：有效 ID
+  console.log();
+  console.log('--- 动态路由：有效 ID（4 条）---');
+  const dynValid = [];
+  for (const r of DYNAMIC_VALID) {
+    const url = args.base + r.path;
+    const { status, error } = await probe(url);
+    const v = verdictOf(status);
+    dynValid.push({ path: r.path, id: r.id, status, verdict: v });
+    console.log(`  [${v}] ${status}  ${r.path}  (${r.id})${status === 0 ? '  (' + error + ')' : ''}`);
+  }
+
+  // 3) 动态路由：无效 ID（期望 404 + 特征文本）
+  console.log();
+  console.log('--- 动态路由：无效 ID（4 条，期望 404 + 特征文本）---');
+  const dynInvalid = [];
+  for (const r of DYNAMIC_INVALID) {
+    const url = args.base + r.path;
+    const { status, text, error } = await probe(url);
+    let verdict;
+    if (status === 404 && typeof text === 'string' && text.includes(NOTFOUND_MARKER)) {
+      verdict = '正确 404';
+    } else if (status === 404) {
+      verdict = '404 但非 404 页（疑似空白/错误页）';
+    } else if (status === 200) {
+      verdict = '错误：应 404 却返回 200';
+    } else if (status === 0) {
+      verdict = `连接失败(${error})`;
+    } else {
+      verdict = `异常(${status})`;
+    }
+    dynInvalid.push({ path: r.path, status, verdict });
+    console.log(`  [${verdict}] ${status}  ${r.path}`);
+  }
+
+  // 4) 站内链接爬取（从首页出发）
   console.log();
   console.log('--- 站内链接爬取 ---');
   const visited = new Set();
-  const queue = [new URL('', base).href]; // 首页
+  const queue = [args.base];
   const broken = [];
-  const okCount = { pages: 0, links: 0 };
-
+  let pages = 0, links = 0;
   while (queue.length) {
     const url = queue.shift();
     if (visited.has(url)) continue;
     visited.add(url);
-    const { status, error } = await probe(url);
-    if (status !== 200) {
-      broken.push({ url, status, error: error || '' });
-      continue;
-    }
-    okCount.pages++;
-    const html = await (await fetch(url)).text();
-    for (const link of extractLinks(html, base)) {
-      okCount.links++;
-      if (!visited.has(link) && link.startsWith(base)) queue.push(link);
+    const { status, text, error } = await probe(url);
+    if (status !== 200) { broken.push({ url, status, error: error || '' }); continue; }
+    pages++;
+    const attrRe = /(?:href|src)\s*=\s*["']([^"']+)["']/gi;
+    let m;
+    while ((m = attrRe.exec(text)) !== null) {
+      let href = m[1];
+      if (!href || href.startsWith('#') || /^(data:|mailto:|tel:)/i.test(href)) continue;
+      let abs;
+      try { abs = new URL(href, url).href; } catch { continue; }
+      if (new URL(abs).origin !== new URL(args.base).origin) continue;
+      links++;
+      if (!visited.has(abs) && abs.startsWith(args.base)) queue.push(abs);
     }
   }
-  console.log(`  已访问页面 ${okCount.pages} 个，发现站内链接 ${okCount.links} 条`);
+  console.log(`  已访问 ${pages} 页，发现站内链接 ${links} 条`);
   if (broken.length) {
     console.log('  断链：');
     for (const b of broken) console.log(`    ${b.status}  ${b.url}${b.error ? '  (' + b.error + ')' : ''}`);
@@ -139,35 +177,34 @@ async function main() {
     console.log('  断链：0');
   }
 
-  // 3) 结论与退出码
+  // 5) 结论
   console.log();
-  const okRoutes = routeResults.filter((r) => r.status === 200).length;
-  const implRoutes = routeResults.filter((r) => r.status === 200 || r.status === 404).length;
-  const abnormalRoutes = routeResults.length - implRoutes;
-  const summary = [];
-  summary.push(`可达路由 ${okRoutes}/12；未实现 ${routeResults.length - okRoutes - abnormalRoutes}/12；异常 ${abnormalRoutes}/12`);
-  summary.push(`断链 ${broken.length} 条`);
+  const okFixed = fixed.filter((r) => r.status === 200).length;
+  const okDynValid = dynValid.filter((r) => r.status === 200).length;
+  const okInvalid = dynInvalid.filter((r) => r.verdict === '正确 404').length;
+  const abnormal = [...fixed, ...dynValid].filter((r) => r.status !== 200 && r.status !== 404).length;
+  const badInvalid = dynInvalid.length - okInvalid;
 
+  const summary = [
+    `固定路由 ${okFixed}/${STATIC_ROUTES.length}`,
+    `动态有效 ID ${okDynValid}/${DYNAMIC_VALID.length}`,
+    `无效 ID 正确 404 ${okInvalid}/${DYNAMIC_INVALID.length}`,
+    `断链 ${broken.length} 条`,
+  ];
   let exit = 0;
   if (broken.length > 0) { summary.push('存在断链'); exit = 1; }
-  if (abnormalRoutes > 0) { summary.push('存在异常状态码'); exit = 1; }
-  if (args.strict && okRoutes !== 12) { summary.push('strict：未达 12/12，门禁不通过'); exit = 1; }
+  if (abnormal > 0) { summary.push('存在异常状态码'); exit = 1; }
+  if (badInvalid > 0) { summary.push('存在无效 ID 未正确 404'); exit = 1; }
+  if (args.strict) {
+    const allOk = okFixed === STATIC_ROUTES.length && okDynValid === DYNAMIC_VALID.length && badInvalid === 0;
+    if (!allOk) { summary.push('strict：门禁不通过'); exit = 1; }
+  }
   console.log('结论：', summary.join('；'));
 
-  // 输出 JSON 供后续 CI/报告消费
-  const out = {
-    base,
-    strict: args.strict,
-    routeMatrix: routeResults,
-    brokenLinks: broken,
-    summary,
-    exitCode: exit,
-  };
-  execFileSync('mkdir', ['-p', resolve(__dirname, '..', 'baseline')]);
-  const jsonPath = resolve(__dirname, '..', 'baseline', 'link-check.latest.json');
-  const { writeFileSync } = await import('node:fs');
-  writeFileSync(jsonPath, JSON.stringify(out, null, 2) + '\n');
-  console.log('已写：', jsonPath);
+  const out = { base: args.base, strict: args.strict, fixed, dynValid, dynInvalid, broken, summary, exitCode: exit };
+  const dir = resolve(__dirname, '..', 'baseline');
+  writeFileSync(resolve(dir, 'link-check.latest.json'), JSON.stringify(out, null, 2) + '\n');
+  console.log('已写：', resolve(dir, 'link-check.latest.json'));
   process.exit(exit);
 }
 
