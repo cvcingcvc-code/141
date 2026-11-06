@@ -1,76 +1,82 @@
 #!/usr/bin/env node
 /**
- * scripts/import/new-journal.mjs — 复盘导入（T4.3 / A4 拥有）
+ * scripts/import/new-journal.mjs — journal 草稿生成器（A4，T4.3，见 AGENTS.md §3）
  *
- * 做什么：把"人写的原始笔记"转成一个**合法但未定稿**的 journal 条目草稿。
- * 不做什么（硬约束，见 docs/IMPORT.md §3）：
- *   - 不自动抓取任何数据源（不读 vault、不读第三方笔记应用、不联网）
- *   - 不生成用户没写过的内容：did/learned 一律留「（待填写）」占位，正文只搬 --from 里的原文
- *   - 不写 published / published_by / approved_by / approved_at 的实值
+ * 做什么：把「人写的结构化笔记」转成一个**合法但未定稿**的 journal 草稿。
+ * 不做什么（硬约束，见 docs/IMPORT.md）：
+ *   - 不自动抓取任何数据源（不联网、不读第三方笔记应用）
+ *   - 不生成用户没写过的内容：did / learned / summary 必须来自用户输入，
+ *     缺失就报错，绝不虚构句子凑合法字段
+ *   - 不写 published / published_by / approved_at / approved_by 的实值
  *   - 不 approve、不 commit、不 merge、不部署
  *
- * 用法：
- *   node scripts/import/new-journal.mjs --date 2026-11-08
- *   node scripts/import/new-journal.mjs --date 2026-11-08 --from F:\141-vault\intake\2026-11-08.md
- *   node scripts/import/new-journal.mjs --date 2026-11-08 --from note.md --title "选了 Astro 而不是 Next" --dry-run
+ * 安全边界（T4.3）：
+ *   - 默认只在仓库外生成草稿；仅 --authorize 才写入 content/journal/<YYYY>/。
+ *   - --date 是唯一决定 id / 文件名 / 目录的输入，且强制校验为真实 YYYY-MM-DD，
+ *     因此文件名与目录不含任何用户可控路径段，杜绝路径穿越。
+ *   - --out 在非授权时必须落在仓库外，否则拒绝（防「输出路径逃逸」）。
+ *   - --vault-ref 只接受 vault:<相对路径>（正则与 schema.ts 同构），阻止 ../ 与绝对路径。
  *
- * 退出码：0 成功；1 用法错误/拒绝覆盖；2 生成后校验未通过（文件已写出，需人工修）
+ * 用法：
+ *   node scripts/import/new-journal.mjs --date 2026-11-08 --from note.md
+ *   node scripts/import/new-journal.mjs --date 2026-11-08 --title "..." --summary "..." \
+ *       --did "做了A" --did "做了B" --learned "学到X"
+ *   node scripts/import/new-journal.mjs --date 2026-11-08 --from note.md --authorize --dry-run
+ *
+ * 退出码：0 成功（或 dry-run）；1 参数/校验/安全拒绝
  */
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
 
+import yaml from 'js-yaml';
+
+import { isRealDate, parseEntry } from '../../src/content/schema.ts';
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, '..', '..');
+const CONTENT_JOURNAL = path.join(REPO_ROOT, 'content', 'journal');
 
-/* ----------------------------- 参数 ----------------------------- */
+/** 私密库默认目录（C-18 约定 F:\141-vault）；可用 --out 覆盖 */
+const DEFAULT_VAULT_DIR = process.env.VAULT_DIR || 'F:\\141-vault';
 
-function parseArgs(argv) {
-  const a = { date: null, from: null, title: null, energy: null, out: null, force: false, dryRun: false, validate: true };
-  for (let i = 0; i < argv.length; i++) {
-    const arg = argv[i];
-    switch (arg) {
-      case '--date': a.date = argv[++i]; break;
-      case '--from': a.from = argv[++i]; break;
-      case '--title': a.title = argv[++i]; break;
-      case '--energy': a.energy = argv[++i]; break;
-      case '--out': a.out = argv[++i]; break;
-      case '--force': a.force = true; break;
-      case '--dry-run': a.dryRun = true; break;
-      case '--no-validate': a.validate = false; break;
-      case '-h':
-      case '--help': a.help = true; break;
-      default:
-        if (arg.startsWith('-')) { a.bad = arg; }
-    }
-  }
-  return a;
-}
+/** 与 schema.ts 的 VAULT_REF_RE 同构（schema 未导出该常量） */
+const VAULT_REF_RE = /^vault:(?!\/)(?!.*\.\.)[A-Za-z0-9._\-/]+$/;
+const TAG_RE = /^[a-z0-9]+(-[a-z0-9]+)*$/;
+const SOURCE_VALUES = ['self-reported', 'agent-drafted'];
 
-const HELP = `复盘导入（生成 draft 草稿，不发布）
+const HELP = `复盘导入（生成 draft 草稿，不发布，默认写到仓库外）
 
   node scripts/import/new-journal.mjs --date YYYY-MM-DD [选项]
 
 选项
-  --date <YYYY-MM-DD>   必填，复盘对应的日期（同时决定 id 与文件路径）
-  --from <文件>          把该文件的正文搬进「原始记录」；可省略（只生成骨架）
-  --title <标题>         省略时用 "YYYY-MM-DD 复盘"
-  --energy <1..5>        省略则不写 energy 字段
-  --out <路径>           自定义输出路径（默认 content/journal/<年>/<日期>.md）
-  --dry-run              只打印，不写文件
-  --force                已存在时允许覆盖——但若已有 published:true 会直接拒绝
-  --no-validate          写完不跑校验（默认会跑）
-  -h, --help             显示本帮助
+  --date <YYYY-MM-DD>      必填，复盘日期（决定 id / 文件名 / 目录）
+  --from <结构化笔记.md>    源笔记：含 "# 标题"、摘要段、"## did"/"## learned"（可选 ## blocked/## tomorrow）
+  --title <标题>            覆盖/补充标题（4..80 字）
+  --summary <摘要>          覆盖/补充摘要（20..200 字）
+  --did <一句话>            当天做的事，可重复传；至少 1 条
+  --learned <一句话>        当天学到的，可重复传；至少 1 条
+  --blocked <一句话>        卡住的事，可重复（可选）
+  --tomorrow <一句话>       次日打算，可重复（可选）
+  --source <值>             自述来源 self-reported|agent-drafted（默认 agent-drafted）
+  --energy <1..5>           当天精力（可选；非 nullable，缺省省略）
+  --vault-ref <vault:...>   原始记录指针（仅合法 vault: 相对引用）
+  --tags <a,b,c>            标签（逗号分隔，须小写 kebab）
+  --out <目录>              草稿输出目录（默认 <私密库>/drafts；仅非授权时生效，须在仓库外）
+  --authorize               显式授权：写入 content/journal/<YYYY>/（否则只写仓库外草稿）
+  --dry-run                 只打印，不写文件
+  --force                   同日期文件已存在时允许覆盖（已发布条目仍拒绝）
+  -h, --help                显示本帮助
 `;
 
-/* --------------------------- 小工具 ---------------------------- */
+function fail(msg) {
+  process.stderr.write(`错误: ${msg}\n`);
+  process.exit(1);
+}
 
-const isRealDate = (s) => {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(s || ''))) return false;
-  const d = new Date(`${s}T00:00:00Z`);
-  return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === s;
-};
+const toPosix = (p) => p.split(path.sep).join('/');
+const oneLine = (s) => String(s).replace(/\s+/g, ' ').trim();
 
 /** 去掉文件开头的 YAML frontmatter（用户拿别的模板写的笔记常带一层） */
 function stripFrontmatter(text) {
@@ -78,118 +84,229 @@ function stripFrontmatter(text) {
   return m ? text.slice(m[0].length) : text;
 }
 
-/** 单行化，避免把用户的多行缩进塞进 YAML 标量 */
-const oneLine = (s) => String(s).replace(/\s+/g, ' ').trim();
+/* ----------------------------- 参数 ----------------------------- */
 
-/* --------------------------- 生成 ------------------------------ */
-
-function buildEntry({ date, title, body, energy }) {
-  const lines = [
-    '---',
-    `id: DJ-${date}`,
-    'type: journal',
-    `title: ${title}`,
-    `summary: （待填写）一句话说清 ${date} 最重要的一件事，20–60 字。`,
-    `created: ${date}`,
-    `updated: ${date}`,
-    'tags: [review]',
-    'sample: false',
-    'vault_ref: null',
-    `date: ${date}`,
-    'review_status: draft',
-    'source: agent-drafted',
-    'approved_at: null',
-  ];
-  if (energy) lines.push(`energy: ${energy}`);
-  lines.push(
-    'did:',
-    '  - （待填写）今天实际完成的具体事项，一条一句，写结果不写心情',
-    'learned:',
-    '  - （待填写）今天真正学到的东西，能复述给别人听才算',
-    'blocked: []',
-    'tomorrow: []',
-    'linked_knowledge: []',
-    'linked_projects: []',
-    'linked_errors: []',
-    'raw_source: null',
-    '---',
-    '',
-    '## 原始记录',
-    '',
-    body && body.trim() ? body.trim() : '（待填写：把当天的原始笔记贴在这里。）',
-    '',
-    '## 补充说明',
-    '',
-    '（可选：为什么做这件事、当时的判断依据、后来发现哪里想错了。）',
-    '',
-  );
-  return lines.join('\n');
+function parseArgs(argv) {
+  const a = {
+    date: null, from: null, title: null, summary: null, did: [], learned: [],
+    blocked: [], tomorrow: [], source: 'agent-drafted', energy: null, vaultRef: null,
+    tags: null, out: null, authorize: false, dryRun: false, force: false, help: false,
+  };
+  for (let i = 0; i < argv.length; i += 1) {
+    const arg = argv[i];
+    const val = () => { i += 1; return argv[i]; };
+    switch (arg) {
+      case '--date': a.date = val(); break;
+      case '--from': a.from = val(); break;
+      case '--title': a.title = val(); break;
+      case '--summary': a.summary = val(); break;
+      case '--did': a.did.push(val()); break;
+      case '--learned': a.learned.push(val()); break;
+      case '--blocked': a.blocked.push(val()); break;
+      case '--tomorrow': a.tomorrow.push(val()); break;
+      case '--source': a.source = val(); break;
+      case '--energy': a.energy = val(); break;
+      case '--vault-ref': a.vaultRef = val(); break;
+      case '--tags': a.tags = val(); break;
+      case '--out': a.out = val(); break;
+      case '--authorize': a.authorize = true; break;
+      case '--dry-run': a.dryRun = true; break;
+      case '--force': a.force = true; break;
+      case '-h': case '--help': a.help = true; break;
+      default:
+        if (arg.startsWith('-')) fail(`未知参数 ${arg}`);
+    }
+  }
+  return a;
 }
 
-/* ----------------------------- 主流程 -------------------------- */
+/* ------------------------- 源笔记解析 --------------------------- */
+
+/** 从结构化笔记解析 title/summary/did/learned/blocked/tomorrow */
+function parseNote(text) {
+  const clean = text.replace(/^\uFEFF/, '').replace(/\r\n/g, '\n');
+  const lines = clean.split('\n');
+  let title = null;
+  let summary = [];
+  const sections = new Map();
+  let current = null;
+  for (const line of lines) {
+    const h1 = /^#\s+(.+)$/.exec(line);
+    const h2 = /^##\s+(.+)$/.exec(line);
+    if (h1 && title === null) title = h1[1].trim();
+    else if (h2) { current = h2[1].trim().toLowerCase(); if (!sections.has(current)) sections.set(current, []); }
+    else if (/^\s*-\s+/.test(line) && current) {
+      const item = line.replace(/^\s*-\s+/, '').trim();
+      if (item) sections.get(current).push(item);
+    } else if (current === null && title !== null && line.trim()) {
+      summary.push(line.trim());
+    }
+  }
+  const listOf = (n) => sections.get(n) || [];
+  return { title: title ?? '', summary: summary.join(' ').trim(), did: listOf('did'), learned: listOf('learned'), blocked: listOf('blocked'), tomorrow: listOf('tomorrow') };
+}
+
+/* ----------------------------- 校验 ----------------------------- */
+
+function validateDate(date) {
+  if (typeof date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(date)) fail(`--date 必须是 YYYY-MM-DD（实际 "${date}"）`);
+  if (!isRealDate(date)) fail(`--date "${date}" 不是真实日期`);
+}
+
+function validateVaultRef(v) {
+  if (v === null || v === undefined || v === '') return undefined;
+  if (!VAULT_REF_RE.test(v)) fail(`--vault-ref 必须是 "vault:<相对路径>"，不允许绝对路径/盘符/../ 穿越或其它协议（实际 "${v}"）`);
+  return v;
+}
+
+function parseTags(s) {
+  if (!s) return [];
+  const tags = s.split(',').map((t) => t.trim()).filter(Boolean);
+  for (const t of tags) if (!TAG_RE.test(t)) fail(`标签 "${t}" 必须是小写 kebab-case`);
+  if (tags.length > 12) fail('tags 最多 12 项');
+  return tags;
+}
+
+function validateEnergy(v) {
+  if (v === null || v === undefined || v === '') return undefined;
+  const n = Number(v);
+  if (!Number.isInteger(n) || n < 1 || n > 5) fail('--energy 必须是 1..5 的整数');
+  return n;
+}
+
+/* ----------------------------- 生成 ----------------------------- */
+
+function buildFrontmatter(o) {
+  const missing = [];
+  if (!o.title) missing.push('title');
+  if (!o.summary) missing.push('summary');
+  if (o.did.length === 0) missing.push('did（至少 1 条，用户实际完成的事）');
+  if (o.learned.length === 0) missing.push('learned（至少 1 条，用户真正学到的）');
+  if (missing.length > 0) {
+    fail(`必填信息缺失，请补齐（不要用虚构句子凑数）：\n  - ${missing.join('\n  - ')}`);
+  }
+
+  const fm = {
+    id: `DJ-${o.date}`,
+    type: 'journal',
+    title: oneLine(o.title),
+    summary: oneLine(o.summary),
+    created: o.date,
+    updated: o.date,
+    published: false,
+    tags: o.tags,
+    sample: false,
+    vault_ref: null,
+    date: o.date,
+    review_status: 'draft',
+    source: o.source,
+    approved_at: null,
+    approved_by: null,
+    did: o.did.map((x) => x.trim()).filter(Boolean),
+    learned: o.learned.map((x) => x.trim()).filter(Boolean),
+    blocked: o.blocked.map((x) => x.trim()).filter(Boolean),
+    tomorrow: o.tomorrow.map((x) => x.trim()).filter(Boolean),
+    linked_knowledge: [],
+    linked_projects: [],
+    linked_errors: [],
+    raw_source: null,
+  };
+  if (o.energy !== undefined && o.energy !== null) fm.energy = o.energy;
+  if (o.vaultRef !== undefined) fm.raw_source = o.vaultRef;
+
+  const parsed = parseEntry('journal', fm);
+  if (!parsed.ok) {
+    const detail = parsed.issues.map((i) => `  ${i.code} ${i.field}: ${i.message}`).join('\n');
+    fail(`生成的 frontmatter 未通过 Schema 校验，拒绝产出：\n${detail}`);
+  }
+  return { fm, bodyFrom: o.body };
+}
+
+/* --------------------------- 输出路径 --------------------------- */
+
+function resolveOutput(args, date) {
+  const year = date.slice(0, 4);
+  const fileName = `${date}.md`;
+  if (args.authorize) {
+    return { dir: path.join(CONTENT_JOURNAL, year), file: path.join(CONTENT_JOURNAL, year, fileName), inRepo: true };
+  }
+  const baseDir = args.out ? path.resolve(args.out) : path.join(DEFAULT_VAULT_DIR, 'drafts');
+  const rel = path.relative(REPO_ROOT, baseDir);
+  const insideRepo = rel === '' || (!rel.startsWith('..') && !path.isAbsolute(rel));
+  if (insideRepo) fail(`未授权(--authorize)时草稿必须落在仓库外，--out 指向了仓库内（${baseDir}）`);
+  return { dir: baseDir, file: path.join(baseDir, fileName), inRepo: false };
+}
+
+/* ----------------------------- 主流程 --------------------------- */
 
 function main() {
   const args = parseArgs(process.argv.slice(2));
-
   if (args.help) { console.log(HELP); process.exit(0); }
-  if (args.bad) { console.error(`未知参数：${args.bad}\n`); console.log(HELP); process.exit(1); }
-  if (!args.date) { console.error('缺少 --date\n'); console.log(HELP); process.exit(1); }
-  if (!isRealDate(args.date)) { console.error(`--date 必须是真实日期 YYYY-MM-DD（实际 "${args.date}"）`); process.exit(1); }
-  if (args.energy && !/^[1-5]$/.test(String(args.energy))) { console.error('--energy 只能是 1..5 的整数'); process.exit(1); }
+  if (!args.date) fail('缺少 --date');
+  validateDate(args.date);
+  if (!SOURCE_VALUES.includes(args.source)) fail(`--source 必须是 ${SOURCE_VALUES.join(' | ')}（实际 "${args.source}"）`);
 
-  const date = args.date;
-  const year = date.slice(0, 4);
-  const outPath = args.out
-    ? path.resolve(REPO_ROOT, args.out)
-    : path.join(REPO_ROOT, 'content', 'journal', year, `${date}.md`);
-  const relOut = path.relative(REPO_ROOT, outPath).split(path.sep).join('/');
+  const energy = validateEnergy(args.energy);
+  const vaultRef = validateVaultRef(args.vaultRef);
+  const tags = parseTags(args.tags);
 
-  // 已存在：默认拒绝。--force 也不许覆盖已发布条目。
-  if (fs.existsSync(outPath)) {
-    const existing = fs.readFileSync(outPath, 'utf8');
-    if (/^published:\s*true\s*$/m.test(existing)) {
-      console.error(`拒绝：${relOut} 已存在且 published: true。脚本不会覆盖已发布内容。`);
-      process.exit(1);
-    }
-    if (!args.force) {
-      console.error(`拒绝：${relOut} 已存在。确认要覆盖请加 --force（已发布条目不在此列）。`);
-      process.exit(1);
-    }
-  }
-
+  // 输入：--from 结构化笔记优先，命令行覆盖
+  let note = { title: '', summary: '', did: [], learned: [], blocked: [], tomorrow: [] };
   let body = '';
   if (args.from) {
-    const fromPath = path.resolve(process.cwd(), args.from);
-    if (!fs.existsSync(fromPath)) { console.error(`--from 文件不存在：${fromPath}`); process.exit(1); }
-    body = stripFrontmatter(fs.readFileSync(fromPath, 'utf8'));
+    if (!fs.existsSync(args.from)) fail(`--from 文件不存在：${args.from}`);
+    const raw = stripFrontmatter(fs.readFileSync(args.from, 'utf8'));
+    note = parseNote(raw);
+    body = raw.trim();
   }
 
-  const title = args.title ? oneLine(args.title) : `${date} 复盘`;
-  const content = buildEntry({ date, title, body, energy: args.energy });
+  const o = {
+    date: args.date,
+    title: args.title || note.title,
+    summary: args.summary || note.summary,
+    did: args.did.length > 0 ? args.did : note.did,
+    learned: args.learned.length > 0 ? args.learned : note.learned,
+    blocked: args.blocked.length > 0 ? args.blocked : note.blocked,
+    tomorrow: args.tomorrow.length > 0 ? args.tomorrow : note.tomorrow,
+    source: args.source,
+    energy,
+    vaultRef,
+    tags,
+    body,
+  };
+
+  const { fm } = buildFrontmatter(o);
+  const out = resolveOutput(args, args.date);
+
+  if (fs.existsSync(out.file)) {
+    const existing = fs.readFileSync(out.file, 'utf8');
+    if (/^published:\s*true\s*$/m.test(existing)) fail(`拒绝：${toPosix(out.file)} 已存在且 published: true，脚本不覆盖已发布内容`);
+    if (!args.force) fail(`拒绝：${toPosix(out.file)} 已存在（同日期已有草稿/条目）。确认覆盖加 --force`);
+  }
+
+  const yamlText = yaml.dump(fm, { lineWidth: -1, noRefs: true });
+  const content = `---\n${yamlText}---\n\n## 原始记录\n\n${body || '（无 --from，正文待补充）'}\n`;
+
+  const where = out.inRepo ? '仓库内 content/' : '仓库外草稿目录';
+  console.log(`将写入（${where}）：${toPosix(out.file)}`);
 
   if (args.dryRun) {
-    console.log(`--- dry-run：将写入 ${relOut} ---\n`);
-    console.log(content);
-    process.exit(0);
+    console.log(`--- dry-run 内容预览 ---\n${content}`);
+    return;
   }
 
-  fs.mkdirSync(path.dirname(outPath), { recursive: true });
-  fs.writeFileSync(outPath, content, 'utf8');
-  console.log(`已写入 ${relOut}`);
-  console.log('状态：review_status=draft，无 published / approved_by —— 不会上站。');
-  console.log('下一步：');
-  console.log('  1) 把 did / learned / summary 里的「（待填写）」换成你自己的话');
-  console.log('  2) npm run validate');
-  console.log('  3) 提交 PR → 用户审核 → 合并');
+  fs.mkdirSync(out.dir, { recursive: true });
+  fs.writeFileSync(out.file, content, 'utf8');
+  console.log(`已生成 draft 草稿：${toPosix(out.file)}`);
+  console.log('状态：review_status=draft, published=false, source=' + fm.source + '，无实值审批证据 —— 不会上站');
+  console.log('下一步：npm run validate → 提 PR → 用户审核 → 合并；本脚本不 commit/merge/发布');
 
-  if (!args.validate) process.exit(0);
-
+  // 生成后立即用仓库校验器复验（双保险；不在 dry-run 下执行）
   try {
     execFileSync(process.execPath, [path.join(REPO_ROOT, 'scripts', 'validate-content.mjs')], { stdio: 'inherit' });
-    process.exit(0);
   } catch {
-    console.error('\n校验未通过（文件已写出）。按上面的报错改完再提交。');
-    process.exit(2);
+    console.error('\n校验未通过（文件已写出）。按上面报错改完再提交。');
+    process.exit(1);
   }
 }
 
