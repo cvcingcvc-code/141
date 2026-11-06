@@ -48,7 +48,7 @@ cd <clone> && npm ci && npm run validate
 ### R-05 正文含邮箱
 - 构造：任意条目正文写入 `someone@example.com`（或真实样式邮箱）。
 - 期望：`V-010`。注意：文档示例值会被白名单化，本用例需用**真实样式**邮箱
-  （如 `foo@bar.com`）验证校验器确实拦截。
+  （如 `foo@example.com`）验证校验器确实拦截。
 - 契约：V-010。
 
 ### R-06 `tags` 超过 12 项

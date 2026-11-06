@@ -10,16 +10,22 @@
  *   L2 git 历史 —— 最近 N 个提交（默认 50）+ 全部涉及 content/ 的提交，扫描新增行。
  *   L3 构建产物 —— 扫描 dist/** 文本文件。
  *
- * 白名单（透明上报，不视作真实命中）：
- *   - 值级：邮箱以 @example.com 结尾（契约/验收文档的示例值）。
- *   - 文件级：本脚本自身（含正则字面量定义）、docs/CONTRACTS.md、
- *             docs/ACCEPTANCE.md 中出现的规则字面量（ghp_/AKIA/sk-/PRIVATE KEY 等）。
+ * 白名单（透明上报，不视作真实命中），**只允许值级，不允许文件/目录级整体跳过**：
+ *   - 值级：邮箱以 @example.com 结尾（契约/验收文档里的示例值）。
+ *   - 值级（哈希）：已在 git 历史中、且用户明确接受为已知风险的**具体值**。
+ *     以 SHA-256 存储，避免白名单本身变成新的暴露面，见 docs/incidents/INC-001.md。
+ *     命中时仍会计入「白名单」并由脚本打印，不会静默消失。
+ *   - 本脚本自身的正则字面量不会匹配自身（规则源码不含真实值），因此不需要文件级豁免。
+ *
+ * 为什么禁止文件级/前缀级白名单：那会让"某目录里写的真实凭据"永远不被报告，
+ * 等于给未来的泄漏留了后门（Wave 1 集成指令 B3 明确要求）。
  *
  * 退出码：0 = 无真实命中（结论明确）；1 = 发现真实命中（阻断）。
  * 依赖：Node 22（零 npm 依赖）；只读，不改任何业务代码。
  */
 
 import { execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { readFileSync, existsSync, statSync, readdirSync, writeFileSync, mkdirSync } from 'node:fs';
 import { resolve, dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -55,27 +61,23 @@ function isPlaceholderValue(ruleId, value) {
   return false;
 }
 
-/** 文件级白名单（命中规则字面量本身，非真实凭据）。 */
-const FILE_WHITELIST = new Set([
-  'qa/scripts/privacy-scan.mjs',
-  'docs/CONTRACTS.md',
-  'docs/ACCEPTANCE.md',
+/**
+ * 已知值白名单（值级，SHA-256）：用户明确接受为已知风险的**具体值**。
+ * 当前只有一条：INC-001 中的所有者公开身份邮箱（已在 git 历史中，接受、不重写历史）。
+ * 用哈希而不是明文，避免白名单文件本身成为新的暴露面。
+ * 新增条目必须：① 有 incident 记录 ② 用户明确批准 ③ 只加单个值，不加目录/前缀。
+ */
+const KNOWN_VALUE_SHA256 = new Map([
+  ['22ce5326d61f7b806ea272ef00a50e941a875b174866dddac2a4f9d753f5069a', '已知值白名单（INC-001：所有者公开身份邮箱，用户已批准接受、不重写历史）'],
+  ['0c7e6a405862e402eb76a70f8a26fc732d07c32931e9fae9ab1582911d2e8a3b', '已知值白名单（非真实地址的测试占位符，当前树已改为 @example.com，仅历史残留）'],
 ]);
 
-/**
- * 前缀白名单：QA 缺陷单 / 基线报告合法引用「已发现的命中值」，
- * 属于结果归档而非新增暴露面，报告为白名单、不再重复计为真实命中。
- */
-const PREFIX_WHITELIST = [
-  'docs/qa/defects/',
-  'qa/baseline/',
-];
+function sha256(text) {
+  return createHash('sha256').update(text, 'utf8').digest('hex');
+}
 
-function isFileWhitelisted(fileRel) {
-  const f = fileRel.replace(/\\/g, '/');
-  if (FILE_WHITELIST.has(f)) return '文件白名单（规则字面量/示例）';
-  if (PREFIX_WHITELIST.some((p) => f.startsWith(p))) return '文件白名单（QA 引用已知命中）';
-  return null;
+function knownValueReason(value) {
+  return KNOWN_VALUE_SHA256.get(sha256(value)) || null;
 }
 
 function scanText(text) {
@@ -97,11 +99,14 @@ function classify(fileRel, hits) {
   const real = [];
   const whitelisted = [];
   for (const h of hits) {
-    const fileWL = isFileWhitelisted(fileRel);
-    if (fileWL || isPlaceholderValue(h.ruleId, h.value)) {
-      whitelisted.push({ ...h, reason: fileWL || '示例值（@example.com）' });
+    // 只允许两种值级豁免；文件路径不参与判定（B3）
+    const known = knownValueReason(h.value);
+    if (isPlaceholderValue(h.ruleId, h.value)) {
+      whitelisted.push({ ...h, reason: '示例值（@example.com）' });
+    } else if (known) {
+      whitelisted.push({ ...h, reason: known });
     } else {
-      real.push(h);
+      real.push({ ...h, file: fileRel });
     }
   }
   return { real, whitelisted };
