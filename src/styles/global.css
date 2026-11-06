@@ -11,7 +11,7 @@
   --color-surface: #ffffff;
   --color-text: #1f2933;
   --color-text-muted: #52606d;
-  --color-text-faint: #7b8794;
+  --color-text-faint: #5f6b76;
   --color-line: #e4e7eb;
   --color-accent: #2f5d8a;
   --color-accent-hover: #24496b;
@@ -677,4 +677,229 @@ code {
 .type-card__count {
   font-size: var(--text-sm);
   color: var(--color-text-faint);
+}
+
+/* =========================================================
+ * T3.3 —— 阅读体验与移动端可读性（A3）
+ * 只做三件事：排版尺度、移动端导航、长文可读性。
+ * 不做：主题切换 / 暗色 / 动画 / 字体下载。
+ * 对比度约束：正文与元信息文字 ≥ 4.5:1（AA），全部实测而非目测。
+ * ========================================================= */
+
+:root {
+  /* 行高与阅读节奏（T3.3 新增，不改既有颜色与间距语义） */
+  --leading-tight: 1.3;
+  --leading-normal: 1.65;
+  --leading-prose: 1.85;
+  --measure: 68ch; /* 长文行宽：中文约 34 字/行，仍在舒适区 */
+}
+
+body {
+  line-height: var(--leading-normal);
+  font-size: var(--text-base);
+  -webkit-text-size-adjust: 100%;
+  text-rendering: optimizeLegibility;
+}
+
+/* ---- 标题层级：靠字号 + 间距区分，不靠颜色堆叠 ---- */
+h1,
+h2,
+h3 {
+  line-height: var(--leading-tight);
+  letter-spacing: 0.01em;
+}
+
+/* ---- 长文可读性 ---- */
+.entry {
+  max-width: 48rem;
+}
+
+.prose {
+  max-width: var(--measure);
+  line-height: var(--leading-prose);
+  font-size: 1.0625rem; /* 17px：比列表正文略大，长文更省力 */
+  color: var(--color-text);
+}
+
+.prose > *:first-child {
+  margin-top: 0;
+}
+
+.prose p,
+.prose ul,
+.prose ol,
+.prose dl {
+  margin-block: 0 1.15em;
+}
+
+.prose > h2 {
+  margin-block: 2.1em 0.7em;
+  font-size: 1.3rem;
+  padding-top: 0.2em;
+  border-top: 1px solid var(--color-line);
+  padding-block-start: 1.1em;
+}
+
+.prose > h3 {
+  margin-block: 1.7em 0.5em;
+  font-size: 1.1rem;
+}
+
+.prose li + li {
+  margin-top: 0.35em;
+}
+
+.prose strong {
+  font-weight: 650;
+}
+
+.prose blockquote {
+  margin-block: 1.4em;
+  padding: 0.15em 0 0.15em 1em;
+  border-left: 3px solid var(--color-line);
+  color: var(--color-text-muted);
+}
+
+.prose a {
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.2em;
+}
+
+.prose code {
+  word-break: break-word;
+}
+
+.prose pre {
+  margin-block: 1.3em;
+  padding: 1em 1.1em;
+  border: 1px solid var(--color-line);
+  border-radius: 8px;
+  font-size: 0.9rem;
+  line-height: 1.6;
+  overflow-x: auto; /* 代码横向滚动，页面本身不滚 */
+  -webkit-overflow-scrolling: touch;
+}
+
+/* 表格：文章里的"可核对证据"表在 360px 下会撑破布局，改为块级横向滚动 */
+.prose table,
+.prose .table-wrap table {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+  line-height: 1.55;
+  margin-block: 1.2em;
+}
+
+.prose th,
+.prose td {
+  padding: 0.5em 0.7em;
+  border-bottom: 1px solid var(--color-line);
+  vertical-align: top;
+  text-align: left;
+}
+
+.prose th {
+  color: var(--color-text-muted);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.prose hr {
+  margin-block: 2em;
+  border: 0;
+  border-top: 1px solid var(--color-line);
+}
+
+.prose img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+}
+
+/* ---- 列表页与卡片的行高一致性 ---- */
+.content-card__summary {
+  line-height: 1.6;
+}
+
+/* ---- 移动端与窄屏（≤640px）---- */
+@media (max-width: 640px) {
+  /* 页头：标题一行，导航两行三列。链接高度 ≥44px，符合触控最小目标 */
+  .site-header__inner {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-2);
+  }
+
+  .site-title {
+    font-size: var(--text-base);
+  }
+
+  .site-nav ul {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.35rem;
+  }
+
+  .site-nav a {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    padding: 0;
+    border: 1px solid var(--color-line);
+    border-radius: 8px;
+    background: var(--color-surface);
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
+  }
+
+  .site-nav a[aria-current="page"] {
+    border-color: var(--color-accent);
+    background: var(--color-accent-soft);
+  }
+
+  /* 正文：字号略收，行高保持，边距不再叠加 */
+  .prose {
+    font-size: 1rem;
+    line-height: 1.8;
+  }
+
+  .prose > h2 {
+    font-size: 1.2rem;
+    margin-block: 1.8em 0.6em;
+  }
+
+  .entry h1,
+  .page-head h1 {
+    font-size: 1.45rem;
+  }
+
+  .entry__meta,
+  .content-card__meta {
+    gap: var(--space-2);
+  }
+
+  /* 卡片内边距收敛，避免 360px 内容区过窄 */
+  .content-card {
+    padding: var(--space-4);
+  }
+
+  .sources {
+    padding: var(--space-4);
+  }
+}
+
+/* ---- 中等宽度（641–900px）：导航允许换行，不挤压标题 ---- */
+@media (min-width: 641px) and (max-width: 900px) {
+  .site-nav ul {
+    gap: var(--space-1) var(--space-3);
+  }
+
+  .site-nav a {
+    padding-block: var(--space-2);
+  }
 }
