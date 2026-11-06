@@ -85,7 +85,7 @@ jobs:
           if [ -n "$HITS" ]; then
             echo "::error::dist 产物命中疑似 PII/凭据（V-010 / C-18 L3）："
             echo "$HITS"
-            echo "若为文档示例类假值（如 someone@example.com），请白名单化并在 PR 说明，勿直接放行。"
+            echo "若命中文档示例类假值，请白名单化并在 PR 中说明，勿直接放行。"
             exit 1
           fi
           echo "dist PII 扫描：0 命中"
