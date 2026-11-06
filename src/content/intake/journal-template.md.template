@@ -1,0 +1,89 @@
+# T2.2 真实内容采集模板（A2 / 状态：BLOCKED-D1）
+
+本文件不是内容条目。扩展名刻意用 `.md.template`（不以 `.md` 结尾）：
+若用 `.md`，`scripts/validate-content.mjs` 会把 `content/` 根目录文件当作条目，
+按 C-1 报 V-012；本文件因此不进 content collections、不进构建产物、不进 content.json、不进搜索索引。
+依据：AGENTS.md §3（A2 拥有 content/**）、CONTRACTS.md C-1（只禁止新增子目录，未禁止非条目文件）。
+
+## 使用规则（先读）
+
+1. **不要在仓库内填写本模板**。本仓库是 public，git 历史不可撤回（C-18 / P0-1）。
+   复制一份到仓库外私密库 `F:\141-vault\intake\` 填写；只有用户明确提供、明确允许入库、
+   且已脱敏为 L1/L2 的内容，才由 A2 结构化写入 `content/**`。L3 原文只留 `vault_ref` 指针。
+2. 当前状态：**BLOCKED-D1** —— 未获得任何可入库的用户素材。本模板只用于采集，不代表已收到素材。
+3. 缺任何一项"用户确认记录"的素材一律不入库；不得由 Agent 推断、补全或用示例凑数（AUDIT §5 D1）。
+
+## 0. 授权与来源（每条素材必填）
+
+| 项 | 填写 |
+| --- | --- |
+| 素材编号 | （自定，如 M-001） |
+| 素材提供人 / 来源 | （用户本人 / 用户指定的公开链接 / 其他，写明） |
+| 是否明确允许写入公开仓库 | □ 是 □ 否（否则不入库） |
+| 脱敏级别 | □ L1 可公开 □ L2 暂不发布 □ L3 禁止入库（只留 vault_ref） |
+| 用户确认记录 | （日期 + 用户原话或链接；缺此项 = 不入库） |
+| 核对人 / 核对日期 | |
+
+## 1. 五类内容字段（逐字对齐 CONTRACTS C-3..C-8）
+
+公共字段：`id` `type` `title` `summary` `created` `updated` `published` `tags` `sample` `vault_ref`
+
+- `id` 格式见 C-2；文件名见 C-1（journal 是唯一命名例外：`YYYY-MM-DD.md` ↔ `DJ-YYYY-MM-DD`）。
+- `title` 4..80 字符，`summary` 20..200 字符（V-013）；`updated >= created`。
+- `published` **一律留空或 false**；Agent 不得改为 true，不得填 `published_by`（Wave 2 冻结 §11.6）。
+- 真实条目的 `sample` **必须为 false**；示例条目的 `sample: true` 不得转正为真实经历。
+- `tags` 见 §2；`vault_ref` 只能是 `vault:<相对路径>`（V-020），不得包含内容摘要或联系方式。
+- 不得写用户没说过的经历、成绩、日期、他人评价；缺失处留空并标注「待补充」。
+
+### knowledge
+`domain`（C-4 枚举）`status`（seed/verified/stale/archived）`confidence`（low/medium/high）
+`sources[]`（kind ∈ url/book/paper/course/person/experience/agent，含 ref / locator / accessed / note）
+`related[]`（已存在的 knowledge id，V-008）
+
+来源核对硬约束：`status: verified` 必须 ≥1 条来源（V-009）；`confidence: high` 必须 ≥1 条非 agent 来源；
+`sources: []` 只能配 `status: seed`，站点必须显示「未标注来源」；**示例条目里的来源不得当作用户素材**。
+
+### projects
+`status` `role` `period.start/end` `stack` `links` `outcomes[]`（≥1，必须是可验证结果）`linked_knowledge[]` `linked_errors[]`
+`outcomes` 禁止「提升了很多」这类空话；`role` 不得编造真实分工。
+
+### journal
+`date` `review_status`（draft/approved）`source`（self-reported/agent-drafted）`approved_at` `approved_by`
+`energy` `did[]` `learned[]` `blocked[]` `tomorrow[]` `linked_*` `raw_source`
+
+`date` / 文件名 / 目录年份 / id 四者一致（V-017）；Agent 起草一律 `source: agent-drafted` + `review_status: draft`；
+**不得自行改为 approved**（V-011 / V-019）；`approved_by` 只能是 `user`。
+
+### errors
+`occurred` `severity` `symptom` `context` `root_cause` `fix` `prevention` `evidence[]` `project`
+五项叙述各 ≥8 字符（V-016）；不得编造未发生的故障与结果。
+
+### profile
+固定 `content/profile/profile.md`，`id: profile`，全仓唯一（V-018）。
+
+## 2. 标签采集（对齐 docs/TAXONOMY.md §2 / §3）
+
+- 优先沿用现有受控标签；全小写 kebab-case、2–24 字符、名词或名词短语、单数、无层级、每条 ≤12 个。
+- 标签本身不得含可识别信息（公司名、医院、家人健康等）；细节留在仓库外。
+- 新标签必须提交：标签名 + 一句话定义 + 为什么现有标签覆盖不了；经 A1 批准后同 PR 登记并批量更新引用（§4）。
+- 未登记标签会触发 W-001（不阻断，但需在 PR 说明）。
+- **本轮实际新增标签：0 个**（原因：BLOCKED-D1，无素材、无实际用词可依据）。
+
+## 3. 知识关联采集
+
+- 只登记用户明确指定的关联：`related` / `linked_knowledge` / `linked_errors` / `linked_projects` / `project`。
+- 目标 id 必须已存在（V-008）；禁止按标题相似度推断关联；禁止建图谱/标签页（v0.1 明确不做，C-9）。
+- 双向可达性报告、孤立条目统计属 T2.3（已延后 v0.2），本轮不做。
+- **本轮实际新增关联：0 条**（原因：BLOCKED-D1）。
+
+## 4. 来源核对表（用户填写，每条素材一行；当前 0 行）
+
+| 素材编号 | 类型 | 用户提供的来源 | 是否可公开核验 | 脱敏级别 | 用户确认记录 | 核对结论 |
+| --- | --- | --- | --- | --- | --- | --- |
+
+## 5. 提交门禁（解锁后执行）
+
+- `npm run scope:check` / `validate`（末行 `0 errors`）/ `test` / `typecheck` / `build` 全部通过。
+- PR 逐条列出新增条目、新标签、新关联，并附每条的用户确认记录与来源核对结论。
+- `git grep` 隐私自检 0 命中；`dist/**` 不含 draft / published:false / L3 内容。
+- 发布门禁是「用户确认合入 main」，不是 Agent 填字段；Agent 不自行合并。
