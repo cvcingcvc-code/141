@@ -6,9 +6,16 @@
   "scripts": {
     "dev": "astro dev",
     "build": "astro build",
-    "preview": "astro preview"
+    "preview": "astro preview",
+    "sync": "astro sync",
+    "typecheck": "astro sync && tsc --noEmit",
+    "validate": "node scripts/validate-content.mjs",
+    "scope:check": "node scripts/check-scope.mjs",
+    "test": "node --test \"src/content/__tests__/*.test.mjs\""
   },
   "devDependencies": {
-    "astro": "^5"
+    "astro": "^5",
+    "js-yaml": "^4.3.2",
+    "zod": "^3.25.76"
   }
 }
