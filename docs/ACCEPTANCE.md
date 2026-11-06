@@ -1,7 +1,7 @@
 # ACCEPTANCE.md — 验收标准与证据要求
 
 > 原则：**"编译成功"和"测试通过"都不是验收。** 验收的唯一形式是：人在真实环境里操作，得到可复查的证据。
-> 版本：rc2（2026-11-06，按 PR #1 审查意见修订）
+> 版本：rc3（2026-11-06，按 PR #1 审查意见修订六项；并加入 `published` 默认 `false` 的安全修正）
 
 ## 1. 验收角色与签字
 
@@ -35,10 +35,11 @@
 
 ### M1 内容契约落地
 - [ ] 合规样本 `npm run validate` exit 0，末行 `0 errors, N warnings`
-- [ ] **11 个红灯用例全部报错**（§4），逐条贴输出
-- [ ] **3 个正向用例通过**（§5），证明修正后没有误报（P1-1/P1-2 的回归）
+- [ ] **12 个红灯用例全部报错**（§4），逐条贴输出
+- [ ] **4 个正向用例通过**（§5），证明修正后没有误报（P1-1/P1-2 的回归 + 默认未发布）
 - [ ] `schema.ts` 与 CONTRACTS 字段逐字对照表
 - [ ] 样本 100% `sample: true`，正文无虚构经历
+- [ ] 未显式写 `published` 字段的新条目默认不出现在站点 / 索引 / `content.json`（`published` 默认 `false`）
 
 ### M2 站点骨架
 - [ ] C-9 的 12 条路由可访问，`link-check` 输出 0 broken
@@ -83,7 +84,8 @@
 | R-08 | 条目 `published: false` | 站点 / 搜索索引 / `content.json` 三处均不存在 |
 | R-09 | journal 文件名 `2026-11-07.md` 但 `date: 2026-11-06`（或目录年份不符） | `V-017`（**不得**报 `V-006`） |
 | R-10 | 在 `feat/a3-*` 分支修改 `content/knowledge/*.md` | `scope:check` exit 1，打印"属于 A2" |
-| R-11 | `approved_by: agent`（或 `a1`、`bot`） | `V-019` |
+| R-11 | `approved_by: agent`（或 `a1`、`bot`）；或 `published_by: bot` | `V-019` |
+| R-12 | `published: true` 但缺 `published_at` 或 `published_by` | `V-021` |
 
 R-07/R-08 是"静默泄漏"类，最容易假通过，必须用产物检索验证（`grep` 产物），不能只看页面肉眼。
 
@@ -94,6 +96,7 @@ R-07/R-08 是"静默泄漏"类，最容易假通过，必须用产物检索验�
 | P-01 | `agent-drafted` + `draft`，**无** `approved_at`/`approved_by` | **不报错**（P1-1 核心回归点），且不发布 |
 | P-02 | journal 文件 `content/journal/2026/2026-11-06.md`，id `DJ-2026-11-06`，`date: 2026-11-06` | **不报 `V-006`**，`V-017` 通过（P1-2 回归点） |
 | P-03 | knowledge `status: seed` + `sources: []` | 不报错，站点显示「未标注来源」 |
+| P-04 | 新增条目**不写** `published` 字段 | 校验**不报错**（默认 `false`），但站点 / 搜索索引 / `content.json` 三处均不存在 |
 
 > 只测"该报的报了"不够：R-04 与 R-09 的修复方式很容易把合法形态一起判死，所以正向用例是必测项。
 

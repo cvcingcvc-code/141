@@ -1,10 +1,10 @@
-# CONTRACTS.md — 统一接口契约（冻结候选 v1.0.0 / rc2）
+# CONTRACTS.md — 统一接口契约（冻结候选 v1.0.0 / rc3）
 
 > **这是本项目唯一的跨模块协议。契约未冻结前，任何 Agent 不得开始编码。**
 > 变更必须走 `docs/rfc/`，由主 Agent 裁决并升版本号。
 > 本文件与代码冲突时，**以本文件为准**，代码视为缺陷。
 
-契约版本：`1.0.0`（rc2，2026-11-06 修订 P0-1/P0-2/P1-1..P1-5）
+契约版本：`1.0.0`（rc3，2026-11-06；rc2 修订 P0-1/P0-2/P1-1..P1-5，rc3 将 `published` 默认改为 `false` 并补审批证据字段）
 契约 ID 前缀约定：`C-*` 为契约条款，`V-*` 为校验错误，`W-*` 为校验警告。QA 缺陷单必须引用这些编号。
 
 ---
@@ -48,8 +48,9 @@ title: Git rebase 与 merge 的取舍   # string, 必填, 4..80 字符
 summary: 一句话说清这条内容解决什么问题  # string, 必填, 20..200 字符
 created: 2026-11-06         # date(YYYY-MM-DD), 必填
 updated: 2026-11-06         # date(YYYY-MM-DD), 必填, 不得早于 created
-published: true             # boolean, 默认 true。**这是发布开关，不是保密开关**
+published: false            # boolean, **默认 false**。新增内容必须明确置 true 才能发布
 published_at: 2026-11-06    # date, published=true 时必填（V-021）
+published_by: user          # published=true 时必填，必须是人工标识（V-019/V-021）
 tags: [git, workflow]       # string[], 0..12 项, 小写 kebab-case
 sample: false               # boolean, 默认 false；true 表示示例内容，站点必须显示「示例」徽章
 vault_ref: null             # 可选, 形如 "vault:journal/2026/2026-11-06-raw.md"，见 C-18
@@ -57,6 +58,8 @@ vault_ref: null             # 可选, 形如 "vault:journal/2026/2026-11-06-raw.
 
 ### `published` 的语义（**P0-1 修订重点**）
 
+- `published` **默认 `false`**：任何新增内容（尤其是 Agent 添加的）默认不发布。只有把 `false` 显式改为 `true` 才会上站。
+- **审批证据字段不等于审批机制**：`published_at` / `published_by` 是声明性证据，Agent 也能填。因此真正的门禁是 —— **内容只有在用户确认合入 `main` 后才会上站**（deploy 只从 main 构建）。把 `published` 从 `false` 改为 `true` 的改动，必须出现在经用户确认的 PR 里；`published_by: user` 只是这次人工确认留下的标记。
 - `published: false` **只表示"不发布到站点"**，它**不代表**保密。本仓库是公开仓库，`git log` 永久可查，任何写入仓库的字节都视为已公开。
 - 因此：**不得公开的原文一律不进本仓库**（无论 `published` 取值），只能存仓库外的私密库并用 `vault_ref` 指针引用（C-18）。
 - `published: false` 的合法用途只有两种：内容已脱敏但暂缓发布；内容仍在整理、结构未定。
@@ -219,7 +222,7 @@ v0.1 只做"读一条内容"必需的页面，聚合类页面延后。所有路�
 ```
 
 - `path` 不含 base 前缀（便于迁移）；消费方自行拼 `base`。
-- 只包含 `published: true` 且（journal）`review_status: approved` 的条目。
+- 只包含 `published: true` + `published_by: user` 且（journal）`review_status: approved` 的条目。`published` 默认 `false`，缺字段 = 不发布。
 - 字段名、类型、必填性 = 契约；新增字段需 RFC。
 - **`graph.json` 推迟到 v0.2**：它服务的是图谱与复杂聚合，不属于"输入 → 校验 → 展示 → 搜索 → 部署"这条必需链路。v0.1 不生成、不消费、不预留字段。
 
@@ -262,9 +265,9 @@ v0.1 只做"读一条内容"必需的页面，聚合类页面延后。所有路�
 | V-016 | errors 五要素缺失或过短（C-8） |
 | V-017 | journal 的 `date` / 文件名 / 目录年份 / id 四者不一致 |
 | V-018 | `content/profile/profile.md` 缺失或 id ≠ `profile` |
-| V-019 | `approved_by` 不是人工标识（出现 `agent`/`bot`/`a1`..`a5`/`system` 等） |
+| V-019 | 人工标识字段（`approved_by`、`published_by`）不是人工标识（出现 `agent`/`bot`/`a1`..`a5`/`system` 等） |
 | V-020 | `vault_ref` 格式非法（必须 `vault:<相对路径>`，不得是其他协议，不得指向仓库内路径） |
-| V-021 | `published: true` 但缺 `published_at` |
+| V-021 | `published: true` 但缺 `published_at` 或 `published_by` |
 
 警告（不阻断，但需在 PR 说明）：
 
@@ -309,7 +312,8 @@ v0.1 只做"读一条内容"必需的页面，聚合类页面延后。所有路�
 | 版本 | 日期 | 状态 | 备注 |
 | --- | --- | --- | --- |
 | 1.0.0-rc1 | 2026-11-06 | 作废 | 首版；存在 P0-1/P0-2/P1-1..P1-5 六项问题 |
-| 1.0.0-rc2 | 2026-11-06 | **待用户确认** | 修订：公开仓库数据边界、审批矩阵、journal 命名例外、写权限单点、范围门禁、MVP 收敛 |
+| 1.0.0-rc2 | 2026-11-06 | 作废 | 修订六项问题 |
+| 1.0.0-rc3 | 2026-11-06 | **待用户确认** | 安全修正：`published` 默认 `false`；`published_by` 必填且须人工标识；明确"字段是证据，门禁是用户确认合入 main" |
 
 ## C-17 分支改动范围门禁（**P1-4**）
 

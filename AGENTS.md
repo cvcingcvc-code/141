@@ -21,7 +21,7 @@
 5. **不扩大范围**。任务只做 `docs/TASKS.md` 里写的事。发现顺手要改的东西 → 记下来，单独提，不夹带。v0.1 的"不做清单"（C-9）优先于任何"顺手加一下"。
 6. **不编造内容**。不写用户没说过的经历、成绩、日期、他人评价。缺失就留空并标注"待补充"。
 7. **仓库是公开的（P0-1）**。本仓库 public，git 历史不可撤回。**不得提交任何私密原文、他人隐私、健康/家庭细节、凭据、未脱敏截图**，无论 `published` 是否为 true。这类内容放仓库外 `F:\141-vault\`，仓库里只留 `vault_ref` 指针。`published: false` 是发布开关，不是保密开关。
-8. **不擅自公开、不自行批准**。`draft` / `published: false` 不进站点；`agent-drafted` 内容不得自行把 `review_status` 改为 `approved`；`approved_by` 只能写 `user`。
+8. **不擅自公开、不自行批准**。`published` **默认 `false`**，Agent 新增内容一律默认不发布；`draft` / `published: false` 不进站点；`agent-drafted` 内容不得自行把 `review_status` 改为 `approved`；`approved_by` / `published_by` 只能写 `user`。字段是证据，真正的门禁是用户确认合入 `main` —— 别把它当成自己填几个字段就能绕过的开关。
 9. **不以测试通过代替验收**。交付必须附真实操作证据（见 `docs/ACCEPTANCE.md`）。
 10. **不修改 `package.json` / `package-lock.json`**（仅 A1）。需要依赖 → 提请求。
 11. **不删既有稳定代码来"简化"**。最小 diff。

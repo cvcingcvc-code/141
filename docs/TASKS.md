@@ -1,6 +1,6 @@
 # TASKS.md — 任务拆分与并行计划
 
-> 契约：`docs/CONTRACTS.md` v1.0.0-rc2（未冻结不得开始编码）
+> 契约：`docs/CONTRACTS.md` v1.0.0-rc3（未冻结不得开始编码）
 > 纪律：每个任务 = 一个分支 = 一个 worktree = 一个 PR。任务未列出的文件，不得修改。
 > **写权限只在 `AGENTS.md §3` 定义一处**，本文件不复述（rc1 的 P1-3 就来自两份表打架）。
 
@@ -36,7 +36,7 @@ Wave 3              ── T4.3 导入流程、T4.4 部署、T5.1/T5.2 验收
 
 ## 2. 主 Agent 任务
 
-### T1.1 契约冻结与仓库治理 ✅（本轮，rc2 修订）
+### T1.1 契约冻结与仓库治理 ✅（本轮，rc3 修订）
 - 产出：8 份文档 + `AGENTS.md` + `docs/rfc/**` + `.gitattributes`
 - DoD：六项 P0/P1 处理完毕；四份文档互相引用一致；仍为文档 PR，无业务代码。
 
@@ -62,9 +62,9 @@ Wave 3              ── T4.3 导入流程、T4.4 部署、T5.1/T5.2 验收
 - 产出：`src/content/schema.ts`（zod，逐字对应 C-3..C-8）、`src/content.config.ts`、`scripts/validate-content.mjs`（V-001..V-021 / W-001..W-005）、`src/lib/collections.ts`（含 `published`/`approved` 过滤）、`content/profile/profile.md` + 五类各 1 条 `sample: true` 样本
 - DoD：
   1. `npm run validate` 对合规样本 exit 0；
-  2. **11 个红灯用例全部被拦截**（`docs/ACCEPTANCE.md` §4 R-01..R-11），逐条贴输出；
+  2. **12 个红灯用例全部被拦截**（`docs/ACCEPTANCE.md` §4 R-01..R-12），逐条贴输出；
   3. `schema.ts` 字段与 CONTRACTS 的逐字对照表贴在 PR 里；
-  4. 样本全部 `sample: true`，正文不含任何虚构的个人经历细节；
+  4. 样本全部 `sample: true`，正文不含任何虚构的个人经历细节；**样本必须同时覆盖两种形态**：显式 `published: true` + `published_by: user`（能上站）与**缺省不写** `published`（默认不发布），验证默认 `false` 生效；
   5. journal 命名例外（`2026-11-06.md` ↔ `DJ-2026-11-06`）有对应测试，且 V-006 不误报、V-017 能命中。
 - 不许做：不写页面、不改 `package.json`、不实现导入。
 
@@ -158,8 +158,8 @@ Wave 3              ── T4.3 导入流程、T4.4 部署、T5.1/T5.2 验收
 
 标签页/领域页聚合、`graph.json`、图谱可视化、`Timeline`/`RelationList` 组件、分页、RSS、暗色模式、第三方笔记同步、自动抓取、访问统计、孤立条目报告（原 T2.3）。
 
-## 9. 本轮（Phase 0 rc2）边界
+## 9. 本轮（Phase 0 rc3）边界
 
-**已做**：六项 P0/P1 修订、四份文档一致性核对、MVP 收敛、保护规则去死锁、范围门禁方案。
+**已做**：六项 P0/P1 修订 + `published` 默认 `false` 安全修正、四份文档一致性核对、MVP 收敛、保护规则去死锁、范围门禁方案。
 
 **未做且不得现在做**：任何 `src/**` `scripts/**` `.github/**` `package.json` 代码；任何 Agent 的开发分支与 worktree；任何真实内容。
