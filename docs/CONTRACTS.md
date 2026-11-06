@@ -1,10 +1,9 @@
-# CONTRACTS.md — 统一接口契约（冻结候选 v1.0.0 / rc3）
+# CONTRACTS.md — 统一接口契约（v1.0.0 / rc4）
 
-> **这是本项目唯一的跨模块协议。契约未冻结前，任何 Agent 不得开始编码。**
-> 变更必须走 `docs/rfc/`，由主 Agent 裁决并升版本号。
+> **这是本项目唯一的跨模块协议。变更必须走 `docs/rfc/`，由主 Agent 裁决并升版本号。**
 > 本文件与代码冲突时，**以本文件为准**，代码视为缺陷。
 
-契约版本：`1.0.0`（rc3，2026-11-06；rc2 修订 P0-1/P0-2/P1-1..P1-5，rc3 将 `published` 默认改为 `false` 并补审批证据字段）
+契约版本：`1.0.0`（rc4，2026-11-06；rc2 修订 P0-1/P0-2/P1-1..P1-5；rc3 将 `published` 默认改为 `false` 并补审批证据字段；rc4 为 Wave 1 集成修正：补齐 `npm test` / `typecheck` 命令与 `src/content.config.ts` 归属，无字段/路由/产物变更）
 契约 ID 前缀约定：`C-*` 为契约条款，`V-*` 为校验错误，`W-*` 为校验警告。QA 缺陷单必须引用这些编号。
 
 ---
@@ -233,6 +232,8 @@ v0.1 只做"读一条内容"必需的页面，聚合类页面延后。所有路�
 | `npm ci` | 干净安装，CI 唯一安装方式 | A1 |
 | `npm run validate` | 内容校验；成功 exit 0，失败 exit 1 | A2 |
 | `npm run scope:check` | 分支改动范围校验（C-17），CI 与本地均可跑 | A4 |
+| `npm test` | A2 的内容契约回归测试（`src/content/__tests__/*.test.mjs`）；**缺失即红，不得跳过** | A2 |
+| `npm run typecheck` | `astro sync && tsc --noEmit`（先 sync 才有 `astro:content` 类型） | A1 |
 | `npm run build` | 构建站点 + 生成 content.json + Pagefind 索引 | A4（脚本）/ A3（页面） |
 | `npm run dev` | 本地开发服务器 | A3 |
 | `npm run preview` | 预览构建产物（**验收搜索必须用它**） | A3 |
@@ -313,7 +314,8 @@ v0.1 只做"读一条内容"必需的页面，聚合类页面延后。所有路�
 | --- | --- | --- | --- |
 | 1.0.0-rc1 | 2026-11-06 | 作废 | 首版；存在 P0-1/P0-2/P1-1..P1-5 六项问题 |
 | 1.0.0-rc2 | 2026-11-06 | 作废 | 修订六项问题 |
-| 1.0.0-rc3 | 2026-11-06 | **待用户确认** | 安全修正：`published` 默认 `false`；`published_by` 必填且须人工标识；明确"字段是证据，门禁是用户确认合入 main" |
+| 1.0.0-rc3 | 2026-11-06 | 已合并 | 安全修正：`published` 默认 `false`；`published_by` 必填且须人工标识；明确"字段是证据，门禁是用户确认合入 main" |
+| 1.0.0-rc4 | 2026-11-06 | **Wave 1 集成修正** | C-11 增补 `npm test` / `npm run typecheck` / `npm run sync`；C-17 的 `feat/a2-` 行补 `src/content.config.ts`（A4 上报的归属差异）；无字段/路由/产物变更，向后兼容 |
 
 ## C-17 分支改动范围门禁（**P1-4**）
 
@@ -325,7 +327,7 @@ AGENTS.md 的文字约束不构成权限门禁。CI 必须执行 `npm run scope:
 
 | 分支前缀 | 允许路径 |
 | --- | --- |
-| `feat/a2-` | `content/**`、`src/content/**`、`src/lib/collections.ts`、`scripts/validate-content.mjs`、`docs/TAXONOMY.md` |
+| `feat/a2-` | `content/**`、`src/content/**`、`src/content.config.ts`、`src/lib/collections.ts`、`scripts/validate-content.mjs`、`docs/TAXONOMY.md` |
 | `feat/a3-` | `src/pages/**`、`src/layouts/**`、`src/components/**`、`src/styles/**`、`src/lib/format.ts`、`src/lib/search.ts`、`public/**`（不含 `public/data/**`） |
 | `feat/a4-` | `.github/**`、`scripts/build-data.mjs`、`scripts/check-scope.mjs`、`scripts/import/**`、`templates/**`、`public/data/**`、`docs/IMPORT.md` |
 | `qa/a5-` | `qa/**`、`docs/qa/**` |

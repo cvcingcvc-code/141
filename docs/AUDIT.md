@@ -66,7 +66,7 @@ warning: You appear to have cloned an empty repository.
 | gh | 2.92.0 | 已登录 `cvcingcvc-code`，具备 `repo`/`workflow` scope，可建 PR、读 Actions |
 | GitHub 连通性 | 直连 200 / 代理 200 | 网络不是阻塞项 |
 
-已修正的隐患：本机 git 全局身份为占位值 `Your Name <you@example.com>`，会在公开仓库产生错误署名提交。已在仓库级设置为 `cvcingcvc-code <cvcingcvc@gmail.com>`（仅作用于本仓库，未改动全局配置）。
+已修正的隐患：本机 git 全局身份为占位值 `Your Name <you@example.com>`，会在公开仓库产生错误署名提交。已在仓库级设置为账号 `cvcingcvc-code` 与其 GitHub 公开邮箱（此处不复述明文，见 INC-001），仅作用于本仓库，未改动全局配置。
 
 ## 3. 审计发现的真实风险
 
