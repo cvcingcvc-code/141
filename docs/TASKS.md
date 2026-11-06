@@ -163,3 +163,20 @@ Wave 3              ── T4.3 导入流程、T4.4 部署、T5.1/T5.2 验收
 **已做**：六项 P0/P1 修订 + `published` 默认 `false` 安全修正、四份文档一致性核对、MVP 收敛、保护规则去死锁、范围门禁方案。
 
 **未做且不得现在做**：任何 `src/**` `scripts/**` `.github/**` `package.json` 代码；任何 Agent 的开发分支与 worktree；任何真实内容。
+
+## 10. Wave 1 完成记录（2026-11-06）
+
+| 任务 | 负责人 | PR | main Commit | 状态 |
+| --- | --- | --- | --- | --- |
+| T2.1 契约代码化 | A2 | #6 | `3e7a3a9` | ✅ 已合并（含 B1 修复：样本不得声称人工批准） |
+| T1.2 工具链 | A1 | #2 | `a6dbf83` | ✅（Wave 0 末） |
+| 公共依赖与命令 | A1 | #7 | `0b4675c` | ✅ zod/js-yaml 显式声明、validate/test/typecheck/scope 登记、INC-001 |
+| T4.1 CI + 范围门禁 | A4 | #3 | `fbb0695` | ✅ 强制 validate/test/typecheck；deploy 改手动 |
+| T3.1 站点外壳 | A3 | #4 | `8d133bf` | ✅ 三档视口无横向溢出 |
+| T5.1 QA 基线 | A5 | #5 | `7ed596b` | ✅ 隐私值级白名单，0 真实命中 |
+
+**Wave 1 结束时的真实状态（不得夸大）**：
+- `main` 可构建、可测试（validate 0 errors / test 24 pass / typecheck 0 / build 2 pages）。
+- 站点只有 2 个页面（`/`、`404.html`），导航栏指向的 6 个页面要到 **T3.2（Wave 2）** 才实现，当前点进去是 404。
+- `ACCEPTANCE M2`（0 断链）**未满足**，属预期；`M3`（搜索）**未开始**。
+- 内容全部 `sample: true` 且 `published: false`，站点目前没有任何真实条目——这是 D1 未提供素材的直接结果。
