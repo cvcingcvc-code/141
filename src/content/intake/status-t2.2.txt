@@ -4,7 +4,7 @@
 - 契约：`docs/CONTRACTS.md` v1.0.0-rc4；任务：`docs/TASKS.md` §3 T2.2
 - 决策依据：`docs/AUDIT.md` §5 D1、`docs/TASKS.md` §10、PR #11 Wave 2 冻结 §11.6
 - 本文件不是内容条目（非 `.md` 扩展名），不进 collections / 构建产物 / 搜索索引
-- 与 `src/content/intake/pending-confirmation.md`（并行 A2 会话产出的逐项确认清单）互补：
+- 与 `src/content/intake/pending-confirmation.md`（逐项确认清单）互补（两份均由 A2 维护，已收敛到同一目录）：
   那里是「要问用户什么」，本文件是「本轮实际核对到了什么 + DoD 差距快照」，两者不互相替代
 
 ## 1. 状态结论
@@ -46,7 +46,7 @@
 
 ## 4. 待用户确认清单（全部未确认）
 
-- [ ] 1. 按 `content/_INTAKE-TEMPLATE.md.template` 提供素材，明确写出「允许写入公开仓库」；profile 1 条 + 其余四类各 ≥1 条
+- [ ] 1. 按 `src/content/intake/journal-template.md.template` 提供素材，明确写出「允许写入公开仓库」；profile 1 条 + 其余四类各 ≥1 条
 - [ ] 2. 每条素材的来源与可公开性确认（含 knowledge 的 `sources` 明细与可核验性）
 - [ ] 3. 标签确认：沿用 TAXONOMY 现有标签，或给出新标签名 + 定义 + 理由
 - [ ] 4. 知识关联确认：明确指定 `related` / `linked_*` 的目标 id 对

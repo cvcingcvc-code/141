@@ -27,6 +27,8 @@
 | `source-verification.md` | 来源核对：`kind` 怎么选、`locator` 要写到什么粒度、`status`/`confidence` 怎么判 |
 | `pending-confirmation.md` | **待用户确认清单**，当前状态 `BLOCKED-D1`（未获得可公开素材的授权） |
 | `intake-form.md` | **可直接复制到仓库外填写的素材表单**（授权块 + 五类填写块 + 来源核对 + 标签/关联），闭环采集 |
+| `status-t2.2.txt` | 本轮 T2.2 的实际核对结果与 DoD 差距快照（**状态**，不是清单；要问什么看 `pending-confirmation.md`） |
+| `journal-template.md.template` | 复盘/错误条目的录入模板（扩展名刻意不以 `.md` 结尾，避免被当成内容条目） |
 
 ## 4. 本轮红线（Wave 2 §11.6 + 用户本轮指令）
 
@@ -57,10 +59,10 @@
 ## 7. 与另一套采集资料的关系（待 A1 裁决，未删除）
 
 同一 worktree 中出现过第二个 A2 会话的产物，已由该会话自行提交到本分支（commit `c551134`，两条文件）：
-`content/_INTAKE-TEMPLATE.md.template`、`content/_INTAKE-T2.2-STATUS.txt`。
+`journal-template.md.template`、`status-t2.2.txt`（已归并到本目录，`content/` 下不再放非条目文件）。
 我没有删除它们（归属未确认前不动别人的产出），差异如下：
 
-| 维度 | 本目录 `src/content/intake/`（4 份 + 1 表单） | `content/_INTAKE-*`（另一会话，2 份） |
+| 维度 | 唯一入口：`src/content/intake/`（本目录） | 已取消：`content/_INTAKE-*` 不再存在（重复会话写入风险已消除） |
 | --- | --- | --- |
 | 位置 | `src/content/` 下，**不在 `content/` 内** | `content/` 根目录 |
 | 防误解析 | 位置天然隔离：content collections 的 loader base 只指向五个子目录，`content/**` 扫描只认 `.md` | 靠扩展名规避（`.txt` / `.md.template`）；一旦有人改名成 `.md` 立即触发 `V-012` |
