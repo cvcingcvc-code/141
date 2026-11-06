@@ -88,8 +88,8 @@ test('仓库真实样本：npm run validate 等价调用应为 0 errors', () => 
   console.log(`真实样本 → ${result.errors} errors, ${result.warnings} warnings；${codesOf(result).join(', ')}`);
 });
 
-/* T2.1 DoD #4：真实样本的发布态分布 ---------------------------------- */
-test('真实样本全部未发布：Agent 不得把模拟审批写成 published_by: user', () => {
+/* 发布红线：真实内容也一律不得由 Agent 自行发布 ------------------------ */
+test('content/ 中没有任何已发布条目，Agent 不得写审批字段', () => {
   const result = validateContent(path.join(REPO_ROOT, 'content'));
   const visible = result.entries.filter((e) => e.ok && isVisibleEntry({ data: e.data })).map((e) => e.data.id);
   const hidden = result.entries.filter((e) => e.ok && !isVisibleEntry({ data: e.data })).map((e) => e.data.id);
@@ -101,12 +101,20 @@ test('真实样本全部未发布：Agent 不得把模拟审批写成 published_
   assert.ok(hidden.includes('ER-20261106-01'), '显式 published:false 不得上站');
   assert.ok(hidden.includes('KB-ENG-001') && hidden.includes('KB-ENG-002') && hidden.includes('profile'), '示例知识/profile 也不得由 Agent 自行发布');
 
-  // 反向硬约束：任何样本都不许出现 published_by（模拟人工确认）
+  // 反向硬约束：任何条目（示例或真实）都不许出现审批证据字段。
+  // 注意：这里不再要求 sample === true —— D1 解锁后 content/ 里会有 sample: false 的真实条目，
+  // 但"真实"不等于"已发布"，红线仍是"Agent 不填 published_by / approved_by / published: true"。
   for (const e of result.entries) {
-    assert.equal(e.frontmatter.sample, true, `${e.file} 必须标注 sample: true`);
+    const sample = e.frontmatter.sample;
+    assert.equal(typeof sample, 'boolean', `${e.file} 的 sample 必须显式为 boolean`);
+    assert.notEqual(e.frontmatter.published, true, `${e.file} 不得 published: true（只能由用户/A1 在合并时置位）`);
     assert.equal(e.frontmatter.published_by, undefined, `${e.file} 不得填 published_by（模拟人工确认）`);
+    assert.equal(e.frontmatter.approved_by, undefined, `${e.file} 不得填 approved_by（模拟人工批准）`);
+    if (e.expectedType === 'journal') {
+      assert.notEqual(e.frontmatter.review_status, 'approved', `${e.file} Agent 不得自行 approved`);
+    }
   }
-  console.log(`发布过滤 → visible=[] hidden=[${hidden.join(', ')}]`);
+  console.log(`发布过滤 → visible=[] hidden=[${hidden.join(', ')}]（含 sample:false 的真实条目）`);
 });
 
 /* 词表漂移防护 --------------------------------------------------------- */
