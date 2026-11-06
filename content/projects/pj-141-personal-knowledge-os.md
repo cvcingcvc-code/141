@@ -40,5 +40,8 @@ linked_errors: []
 
 ## 关联
 
-- 判断规则见 [KB-ENG-001](/141/knowledge/kb-eng-001/)：本地整理提交用 rebase，已共享的分支只 merge。
-- 校验边界见 [KB-ENG-002](/141/knowledge/kb-eng-002/)：结构合规 ≠ 内容为真。
+- 判断规则见 `KB-ENG-001`（Git rebase 与 merge 的取舍）：本地整理提交用 rebase，已共享的分支只 merge。
+- 校验边界见 `KB-ENG-002`（Schema 校验只能证明形状合规）：结构合规 ≠ 内容为真。
+
+> 正文刻意不写 Markdown 站内链接：v0.1 的详情页链接由页面按 `id` 生成（`getProjectById` + `linked_knowledge`），
+> 在正文里硬编码 `/141/knowledge/xxx/` 只会在条目未发布时变成必然 404（`W-005`）。
