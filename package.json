@@ -5,17 +5,19 @@
   "type": "module",
   "scripts": {
     "dev": "astro dev",
-    "build": "astro build",
+    "build": "astro build && node scripts/build-data.mjs && pagefind --site dist",
     "preview": "astro preview",
     "sync": "astro sync",
     "typecheck": "astro sync && tsc --noEmit",
     "validate": "node scripts/validate-content.mjs",
     "scope:check": "node scripts/check-scope.mjs",
-    "test": "node --test \"src/content/__tests__/*.test.mjs\""
+    "test": "node --test \"src/content/__tests__/*.test.mjs\"",
+    "build:site": "astro build"
   },
   "devDependencies": {
     "astro": "^5",
     "js-yaml": "^4.3.2",
+    "pagefind": "^1.6.0",
     "zod": "^3.25.76"
   }
 }

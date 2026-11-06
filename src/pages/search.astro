@@ -1,0 +1,22 @@
+---
+/**
+ * 搜索 — /search/（C-9 #11）
+ * 索引由构建期 pagefind 生成；dev 下不存在属预期，SearchBox 会显式说明。
+ */
+import Base from '../layouts/Base.astro';
+import SearchBox from '../components/SearchBox.astro';
+import { baseUrl } from '../lib/format';
+
+const bundlePath = `${baseUrl()}pagefind/`;
+---
+
+<Base title="搜索" description="全文搜索知识、项目、复盘与错误经验。">
+  <header class="page-head">
+    <h1>搜索</h1>
+    <p class="page-head__desc">
+      索引在构建时生成，只包含已发布内容；草稿、未发布条目与私密资料不会进入索引。
+    </p>
+  </header>
+
+  <SearchBox bundlePath={bundlePath} />
+</Base>

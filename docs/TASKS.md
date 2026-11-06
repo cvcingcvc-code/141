@@ -1,6 +1,6 @@
 # TASKS.md — 任务拆分与并行计划
 
-> 契约：`docs/CONTRACTS.md` v1.0.0-rc3（未冻结不得开始编码）
+> 契约：`docs/CONTRACTS.md` v1.0.0-rc4（Wave 1 后基线）
 > 纪律：每个任务 = 一个分支 = 一个 worktree = 一个 PR。任务未列出的文件，不得修改。
 > **写权限只在 `AGENTS.md §3` 定义一处**，本文件不复述（rc1 的 P1-3 就来自两份表打架）。
 
@@ -36,7 +36,7 @@ Wave 3              ── T4.3 导入流程、T4.4 部署、T5.1/T5.2 验收
 
 ## 2. 主 Agent 任务
 
-### T1.1 契约冻结与仓库治理 ✅（本轮，rc3 修订）
+### T1.1 契约冻结与仓库治理 ✅（Phase 0，已合并）
 - 产出：8 份文档 + `AGENTS.md` + `docs/rfc/**` + `.gitattributes`
 - DoD：六项 P0/P1 处理完毕；四份文档互相引用一致；仍为文档 PR，无业务代码。
 
@@ -158,7 +158,7 @@ Wave 3              ── T4.3 导入流程、T4.4 部署、T5.1/T5.2 验收
 
 标签页/领域页聚合、`graph.json`、图谱可视化、`Timeline`/`RelationList` 组件、分页、RSS、暗色模式、第三方笔记同步、自动抓取、访问统计、孤立条目报告（原 T2.3）。
 
-## 9. 本轮（Phase 0 rc3）边界
+## 9. Phase 0 边界（历史记录）
 
 **已做**：六项 P0/P1 修订 + `published` 默认 `false` 安全修正、四份文档一致性核对、MVP 收敛、保护规则去死锁、范围门禁方案。
 
@@ -180,3 +180,94 @@ Wave 3              ── T4.3 导入流程、T4.4 部署、T5.1/T5.2 验收
 - 站点只有 2 个页面（`/`、`404.html`），导航栏指向的 6 个页面要到 **T3.2（Wave 2）** 才实现，当前点进去是 404。
 - `ACCEPTANCE M2`（0 断链）**未满足**，属预期；`M3`（搜索）**未开始**。
 - 内容全部 `sample: true` 且 `published: false`，站点目前没有任何真实条目——这是 D1 未提供素材的直接结果。
+
+## 11. Wave 2 接口冻结（2026-11-06，基线 `4bf302e`）
+
+> 下列 API 名称以 `src/lib/collections.ts` 现有导出为准（A2 已实现的 `getAll*` 已内含发布过滤）。
+> 目标：12 条路由可访问、动态详情可由**已发布**数据生成、空内容有正常空态、全文搜索在隔离环境真实可用。
+> 不做：图谱、AI 聊天、自动抓取、在线编辑器、后端、新框架。
+
+### 11.1 路由（唯一来源 C-9，不得增删）
+
+| 路由 | 生成方式 | 数据来源（必须经 `src/lib/collections.ts`） |
+| --- | --- | --- |
+| `/` | 静态 | `getProfile()` + `getAllJournal().slice(0,3)` + `getAllKnowledge().slice(0,3)` |
+| `/about/` | 静态 | `getProfile()` |
+| `/knowledge/` | 列表 | `getAllKnowledge()` |
+| `/knowledge/[id]/` | 动态（`getStaticPaths`） | `getAllKnowledge()` / `getKnowledgeById(id)`，`id` 小写 |
+| `/projects/` | 列表 | `getAllProjects()` |
+| `/projects/[id]/` | 动态 | `getAllProjects()` / `getProjectById(id)` |
+| `/journal/` | 列表 | `getAllJournal()` |
+| `/journal/[date]/` | 动态（`YYYY-MM-DD`） | `getAllJournal()` / `getJournalByDate(date)` |
+| `/errors/` | 列表 | `getAllErrors()` |
+| `/errors/[id]/` | 动态 | `getAllErrors()` / `getErrorById(id)` |
+| `/search/` | 静态 | Pagefind（构建后产物） |
+| `/404.html` | 静态 | — |
+
+**禁止**：页面里自己读 `getCollection()` 并手写过滤；一切发布过滤只在 `collections.ts` 内。
+
+### 11.2 数据产物（唯一来源 C-10）
+
+- `dist/data/content.json`：字段与 C-10 逐字一致，**只含已发布条目**。
+- A4 的 `scripts/build-data.mjs` 必须 `import { isPublishable } from '../src/content/schema.ts'` 同源的判定逻辑（实现上可从 `schema.ts` 导出，禁止复制一份过滤条件）。
+- 不产出 `graph.json`。
+
+### 11.3 搜索接口
+
+- 构建后 `pagefind --site dist` → `dist/pagefind/**`；索引内容来自 HTML，天然继承"未发布不渲染"的过滤，但仍要求 A4 用同一过滤规则生成 `content.json`，两者条目数必须一致（QA 可对比）。
+- `SearchBox` props：`bundlePath`（= `${import.meta.env.BASE_URL}pagefind/`）；`/search/` 页必须处理"索引不存在"（dev 下）与"0 结果"两种状态。
+- 搜索页不发起任何网络请求到第三方。
+
+### 11.4 依赖与命令（A1 独占）
+
+- 新增唯一依赖：`pagefind`（devDependency）。命令接线（`npm run build` 串 data + pagefind）由 A1 在 A4 脚本落地后单独提交，避免抢跑。
+- 允许的新增 script：无（沿用 validate/test/typecheck/scope:check/build）。
+
+### 11.5 文件所有权增量（Wave 2）
+
+| 路径 | 归属 | 说明 |
+| --- | --- | --- |
+| `src/pages/**`（含 4 个动态目录） | A3 | 只读 `collections.ts` |
+| `src/components/**`（5 个组件） | A3 | ContentCard/StatusBadge/SourceList/TagList/SearchBox |
+| `scripts/build-data.mjs` | A4 | 复用 `isPublishable`，不复制过滤逻辑 |
+| `docs/WAVE2-ACCEPTANCE.md`（A5 产出） | A5 | 验收记录，不改业务码 |
+| `package.json` / lock / `astro.config.mjs` | A1 | 依赖与命令接线 |
+
+### 11.6 发布红线（重申）
+
+1. 任何 Agent 不得把 `published` 改为 `true`，不得填 `published_by`。
+2. 需要"有内容可看"的测试，只在**仓库外**临时副本里构造（`F:/141-e2e/`），产物与内容一概不入库。
+3. 空内容时页面必须正常显示空态，不得用硬编码假数据填充。
+
+### 11.7 Wave 2 验收区分（A5 必读）
+
+| 维度 | 判定方式 | 通过标准 |
+| --- | --- | --- |
+| 静态页面可访问 | 构建产物 + 服务 | 12 条路由 200（含 404.html） |
+| 动态路由由已批准数据生成 | 隔离副本中注入测试条目后构建 | 详情页生成、字段正确、链接不悬空 |
+| 空内容正常 | 仓库本体构建 | 列表页显示空态文案，无报错、无假数据 |
+| 测试内容不进入公开产物 | 仓库本体 `dist/` 搜索测试专属字符串 | 0 命中 |
+| 搜索真实可用 | 隔离副本构建 + `pagefind` 索引 + 浏览器输入关键词 | 命中并跳转正确 |
+| 未授权内容完全排除 | 造 `published:false` / `draft` 条目 | 站点/索引/`content.json` 三处均不存在 |
+
+## 12. Wave 2 完成记录（2026-11-06，基线 `4bf302e`）
+
+| 任务 | PR | main Commit | 状态 |
+| --- | --- | --- | --- |
+| 接口冻结（路由/产物/搜索/所有权） | #11 | `e631e75` | ✅ |
+| T3.2 12 条路由 + 5 组件 | #12 | `210d7f6` | ✅ |
+| T4.2 `content.json` 生成器 | #13 | `da8acf6` | ✅ |
+| build 接线（data + pagefind） | #14 | `2a9d85f` | ✅ |
+| CI：PII 扫描改扫内容产物 | #15 | `2430510` | ✅（pagefind 打包 JS 假阳性） |
+| QA：L3 区分第三方产物 | #18 | `1eb05fe` | ✅（34 处上游作者邮箱假阳性） |
+| T2.2 真实内容填充 | — | — | ⛔ **阻塞**：用户尚未提供素材，未编造 |
+
+**Wave 2 结束时的真实状态（不得夸大）**：
+
+- `npm run build` 一条命令产出：12 个 HTML（8 静态含 404 + 4 个动态路由模板）+ `dist/data/content.json` + `dist/pagefind/`。
+- 仓库本体（无已发布内容）：`content.json` items=0，站点 8 页可达，4 条动态路由**不生成**（无数据）——这是正确行为，不是缺陷。
+- 隔离副本（仓库外 `F:/141-e2e`，注入 4 条 `published:true` 测试条目）实测：12/12 路由 200、动态页字段正确、
+  `content.json` items=4、搜索「鲸落」4 条命中、「rebase」（仅存在于未发布条目）0 条命中。
+- 公开仓库产物 `grep 鲸落` = 0 命中：测试内容从未进入公开产物。
+- `ACCEPTANCE M2`（0 断链）在 8 条已实现路由上成立（link-check 0 broken）；`M3` 搜索在隔离环境成立。
+- A5 独立验收 **未完成**（需独立窗口）；本记录不代签。
