@@ -1,0 +1,134 @@
+---
+/**
+ * SearchBox — Pagefind 全文搜索（C-13 / TASKS §11.3）
+ * props.bundlePath 必须由调用方传 `${BASE_URL}pagefind/`，本组件不自行拼 base。
+ *
+ * 两种降级状态必须显式呈现，不得假装"没结果"：
+ *   1. 索引不存在（dev 或未跑 pagefind）→ 提示需要构建
+ *   2. 查询 0 结果 → 提示换关键词
+ *
+ * 实现说明：脚本用 `is:inline` 不经 Vite 打包。
+ * 原因：Vite 会把动态 `import()` 包进 preload 助手并按 base 再前缀一次，
+ * 对已经是 "/141/pagefind/..." 的绝对路径会变成 "/141//141/pagefind/..." → 404。
+ * 这里直接使用浏览器原生 import()，路径完全由 BASE_URL 计算，行为可预测。
+ */
+interface Props {
+  bundlePath: string;
+  placeholder?: string;
+}
+
+const { bundlePath, placeholder = '搜索知识、项目、复盘、错误经验…' } = Astro.props;
+---
+
+<div class="search" data-search-root data-bundle={bundlePath}>
+  <label class="search__label" for="search-input">全文搜索</label>
+  <input
+    id="search-input"
+    class="search__input"
+    type="search"
+    name="q"
+    placeholder={placeholder}
+    autocomplete="off"
+    enterkeyhint="search"
+  />
+  <p class="search__status" data-search-status role="status" aria-live="polite">
+    输入关键词开始搜索。
+  </p>
+  <ol class="search__results" data-search-results></ol>
+</div>
+
+<script is:inline>
+  (function () {
+    var root = document.querySelector('[data-search-root]');
+    if (!root) return;
+
+    var bundle = root.getAttribute('data-bundle') || '/pagefind/';
+    var input = root.querySelector('#search-input');
+    var statusEl = root.querySelector('[data-search-status]');
+    var resultsEl = root.querySelector('[data-search-results]');
+
+    var pagefind = null;
+    var loadError = null;
+
+    function setStatus(text) {
+      if (statusEl) statusEl.textContent = text;
+    }
+
+    function load() {
+      if (pagefind || loadError) return Promise.resolve(pagefind);
+      return import(bundle + 'pagefind.js')
+        .then(function (mod) {
+          pagefind = mod;
+          return pagefind.init ? pagefind.init() : null;
+        })
+        .then(function () {
+          return pagefind;
+        })
+        .catch(function () {
+          loadError = true;
+          setStatus('搜索索引尚未生成（需要先运行 npm run build 生成 pagefind 索引）。当前为开发模式或尚未构建。');
+          return null;
+        });
+    }
+
+    function render(items) {
+      if (!resultsEl) return;
+      resultsEl.innerHTML = '';
+      items.forEach(function (item) {
+        var li = document.createElement('li');
+        li.className = 'search__result';
+        var a = document.createElement('a');
+        a.href = item.url;
+        a.textContent = (item.meta && item.meta.title) || item.url;
+        var p = document.createElement('p');
+        p.innerHTML = item.excerpt || '';
+        li.appendChild(a);
+        li.appendChild(p);
+        resultsEl.appendChild(li);
+      });
+    }
+
+    function run() {
+      var q = (input && input.value ? input.value : '').trim();
+      if (resultsEl) resultsEl.innerHTML = '';
+      if (!q) {
+        setStatus('输入关键词开始搜索。');
+        return;
+      }
+      load()
+        .then(function (pf) {
+          if (!pf) return null;
+          return pf.search(q).then(function (res) {
+            return Promise.all(
+              res.results.slice(0, 20).map(function (r) {
+                return r.data();
+              })
+            ).then(function (top) {
+              return { total: res.results.length, top: top, q: q };
+            });
+          });
+        })
+        .then(function (out) {
+          if (!out) return;
+          if (out.top.length === 0) {
+            setStatus('没有找到与「' + out.q + '」相关的内容，换个关键词试试。');
+            return;
+          }
+          setStatus('找到 ' + out.total + ' 条结果（最多显示 20 条）。');
+          render(out.top);
+        })
+        .catch(function () {
+          setStatus('搜索执行失败：索引文件可能不完整，请重新构建后再试。');
+        });
+    }
+
+    if (input) input.addEventListener('input', run);
+
+    // 支持 ?q= 直接查询（便于分享与验收脚本）
+    var initial = new URLSearchParams(location.search).get('q');
+    if (initial && input) {
+      input.value = initial;
+      run();
+    }
+  })();
+</script>

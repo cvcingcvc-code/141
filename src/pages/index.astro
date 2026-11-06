@@ -1,56 +1,85 @@
 ---
-// 首页 — T3.1 静态首屏（不依赖内容数据，真实内容在 T3.2 接入）
+// 首页 — / （C-9 #1）：profile + 最近 3 条复盘 + 最近 3 条知识 + 四类入口
 import Base from "../layouts/Base.astro";
+import ContentCard from "../components/ContentCard.astro";
+import { getProfile, getAllJournal, getAllKnowledge, getAllProjects, getAllErrors, toListItem, type ContentEntry } from "../lib/collections";
+import { baseUrl, formatDate } from "../lib/format";
 
-const rawBase = import.meta.env.BASE_URL;
-const base = rawBase.endsWith("/") ? rawBase : `${rawBase}/`;
+const base = baseUrl();
+const [profile, journal, knowledge, projects, errors] = await Promise.all([
+  getProfile(),
+  getAllJournal(),
+  getAllKnowledge(),
+  getAllProjects(),
+  getAllErrors(),
+]);
 
-// 五类内容入口（对应 C-1 的五个内容域；路由在 T3.2 落地）
+const recentJournal = journal.slice(0, 3).map((e) => toListItem(e as ContentEntry));
+const recentKnowledge = knowledge.slice(0, 3).map((e) => toListItem(e as ContentEntry));
+const counts = { knowledge: knowledge.length, projects: projects.length, journal: journal.length, errors: errors.length };
+
 const sections = [
-  {
-    name: "知识 Knowledge",
-    href: `${base}knowledge/`,
-    desc: "结构化的知识条目：来源可追溯、状态可标记、可信度可分级。",
-  },
-  {
-    name: "项目 Projects",
-    href: `${base}projects/`,
-    desc: "在做与做完的项目：技术栈、周期与可验证的结果。",
-  },
-  {
-    name: "复盘 Journal",
-    href: `${base}journal/`,
-    desc: "按日期沉淀的复盘：做了什么、学到什么、卡在哪里。",
-  },
-  {
-    name: "错误经验 Errors",
-    href: `${base}errors/`,
-    desc: "踩坑记录：症状、根因、修复与预防，避免重复犯错。",
-  },
+  { name: "知识", href: `${base}knowledge/`, desc: "来源可追溯、状态可标记、可信度可分级。", count: counts.knowledge },
+  { name: "项目", href: `${base}projects/`, desc: "角色、周期、技术栈与可验证的结果。", count: counts.projects },
+  { name: "复盘", href: `${base}journal/`, desc: "按日期沉淀：做了什么、学到什么、卡在哪。", count: counts.journal },
+  { name: "错误经验", href: `${base}errors/`, desc: "症状、根因、修复与预防，避免重犯。", count: counts.errors },
 ];
 ---
 
 <Base title="Personal Knowledge OS">
   <section class="hero">
-    <h1 class="hero__title">Personal Knowledge OS</h1>
+    <h1 class="hero__title">{profile?.data.title ?? "Personal Knowledge OS"}</h1>
     <p class="hero__tagline">
-      一个内容优先的个人知识系统：把知识、项目、复盘与错误经验结构化管理，
-      每一条都可追溯来源、可被全文搜索。
+      {profile?.data.summary ?? "一个内容优先的个人知识系统：知识、项目、复盘与错误经验结构化管理，每条可追溯来源、可被全文搜索。"}
     </p>
     <p class="hero__meta">
-      站点建设中 —— 当前为站点外壳（T3.1），内容将在后续里程碑接入。
+      共 {counts.knowledge} 条知识 · {counts.journal} 篇复盘 · {counts.projects} 个项目 · {counts.errors} 条错误经验
+      {profile ? ` · 更新于 ${formatDate(profile.data.updated)}` : " · 个人介绍待发布"}
     </p>
   </section>
 
-  <h2 class="section-title">内容入口</h2>
-  <div class="card-grid">
+  <section>
+    <h2 class="section-title">内容分类</h2>
+    <div class="card-grid">
+      {
+        sections.map((s) => (
+          <a class="type-card" href={s.href}>
+            <span class="type-card__name">{s.name}</span>
+            <span class="type-card__desc">{s.desc}</span>
+            <span class="type-card__count">{s.count} 条已发布</span>
+          </a>
+        ))
+      }
+    </div>
+  </section>
+
+  <section>
+    <h2 class="section-title">最近复盘</h2>
     {
-      sections.map((s) => (
-        <a class="type-card" href={s.href}>
-          <p class="type-card__name">{s.name}</p>
-          <p class="type-card__desc">{s.desc}</p>
-        </a>
-      ))
+      recentJournal.length === 0 ? (
+        <div class="empty-state">
+          <p class="empty-state__title">还没有已批准的复盘</p>
+          <p class="empty-state__desc">复盘需要本人确认（review_status: approved）后才会上站。</p>
+        </div>
+      ) : (
+        <div class="content-list">{recentJournal.map((item) => <ContentCard item={item} kind="journal" />)}</div>
+      )
     }
-  </div>
+  </section>
+
+  <section>
+    <h2 class="section-title">最近知识</h2>
+    {
+      recentKnowledge.length === 0 ? (
+        <div class="empty-state">
+          <p class="empty-state__title">还没有已发布的知识条目</p>
+          <p class="empty-state__desc">
+            内容需人工确认后发布；当前仓库里只有示例数据（默认不发布）。<a href={`${base}about/`}>发布规则</a>。
+          </p>
+        </div>
+      ) : (
+        <div class="content-list">{recentKnowledge.map((item) => <ContentCard item={item} kind="knowledge" />)}</div>
+      )
+    }
+  </section>
 </Base>

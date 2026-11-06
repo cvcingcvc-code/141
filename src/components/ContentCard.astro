@@ -1,0 +1,29 @@
+---
+/**
+ * ContentCard — 列表卡片（C-13）
+ * 必填：item（ListItem 形状，见 collections.ts）、kind（用于 aria 与样式）
+ * 规则：sample === true 时必须显示「示例」徽章，禁止伪装成真实内容。
+ */
+import type { ListItem } from '../lib/collections';
+import { entryHref, formatDate } from '../lib/format';
+import TagList from './TagList.astro';
+
+interface Props {
+  item: ListItem;
+  kind: 'knowledge' | 'project' | 'journal' | 'error';
+}
+
+const { item, kind } = Astro.props;
+---
+
+<article class={`content-card content-card--${kind}`}>
+  <h3 class="content-card__title">
+    <a href={entryHref(item.path)}>{item.title}</a>
+    {item.sample && <span class="badge badge--sample" title="示例数据，非真实个人记录">示例</span>}
+  </h3>
+  <p class="content-card__summary">{item.summary}</p>
+  <div class="content-card__meta">
+    <time datetime={item.updated}>{formatDate(item.updated)}</time>
+    {item.tags.length > 0 && <TagList tags={item.tags} />}
+  </div>
+</article>
