@@ -8,9 +8,14 @@
 
 ## 当前状态
 
-**Phase 0（契约冻结候选 rc3）**：仓库审计、MVP 定义、架构、契约、任务拆分、验收标准已完成；已按审查意见修订六项 P0/P1 问题，并将 `published` 默认收紧为 `false`，等待确认后合并。
+**Wave 2 完成（2026-11-06）**：站点骨架、12 条路由、内容校验、数据产物与全文搜索均已落地并可本地构建。
 
-已实现的运行能力：**无**。本仓库目前只有文档与最小 bootstrap 提交，没有可运行站点。请不要假设任何功能存在 —— 这是本项目的明确起点（依据：`docs/AUDIT.md`）。
+- 可运行能力：`npm run build` → 12 个 HTML + `dist/data/content.json` + `dist/pagefind/` 搜索索引
+- 内容现状：`content/` 仅 6 条**示例**条目且全部未发布，因此站点列表页显示空态、4 条动态详情路由不会生成
+- 公开部署：**未执行**。`deploy` 工作流只支持手动触发，需显式输入确认才发布（见 `AGENTS.md §6`）
+- 契约版本：`docs/CONTRACTS.md` v1.0.0-rc4；Wave 2 合并记录见 `docs/TASKS.md §12`
+
+想看具体做了什么、验收到了什么程度，以 `docs/TASKS.md` 与 `docs/QA` 下的验收记录为准，不要以本段为准。
 
 ## 这是一个公开仓库
 
@@ -46,7 +51,7 @@
 - `docs/BRANCHES.md` — 分支与 worktree 方案
 - `docs/rfc/` — 契约变更申请流程
 
-## 快速开始（Phase 1 落地后可用）
+## 快速开始
 
 ```bash
 git clone https://github.com/cvcingcvc-code/141.git
