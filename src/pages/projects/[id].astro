@@ -1,0 +1,117 @@
+---
+/**
+ * 项目详情 — /projects/[id]/（C-9 #6）
+ * 关联知识/错误以纯文本链接列表呈现（v0.1 不做图谱式聚合）。
+ */
+import { render } from 'astro:content';
+import Base from '../../layouts/Base.astro';
+import TagList from '../../components/TagList.astro';
+import { getAllProjects, getAllKnowledge, getAllErrors, toListItem, type ContentEntry } from '../../lib/collections';
+import { formatDate, href } from '../../lib/format';
+
+export async function getStaticPaths() {
+  const entries = await getAllProjects();
+  return entries.map((entry) => ({
+    params: { id: String(entry.data.id).toLowerCase() },
+    props: { entry },
+  }));
+}
+
+const { entry } = Astro.props;
+const { Content } = await render(entry);
+const d = entry.data;
+
+const [knowledge, errors] = await Promise.all([getAllKnowledge(), getAllErrors()]);
+const knowledgeMap = new Map(knowledge.map((e) => [String(e.data.id).toUpperCase(), toListItem(e as ContentEntry)]));
+const errorMap = new Map(errors.map((e) => [String(e.data.id).toUpperCase(), toListItem(e as ContentEntry)]));
+
+const toLinks = (ids: string[] | undefined, map: Map<string, ReturnType<typeof toListItem>>, fallback: string) =>
+  (Array.isArray(ids) ? ids : []).map((id) => {
+    const hit = map.get(String(id).toUpperCase());
+    return { id, title: hit?.title ?? id, path: hit?.path ?? fallback };
+  });
+
+const linkedKnowledge = toLinks(d.linked_knowledge, knowledgeMap, '/knowledge/');
+const linkedErrors = toLinks(d.linked_errors, errorMap, '/errors/');
+
+const period = d.period as { start?: string; end?: string | null } | undefined;
+---
+
+<Base title={d.title} description={d.summary}>
+  <article class="entry">
+    <header class="entry__head">
+      <p class="entry__kind"><a href={href('/projects/')}>项目</a></p>
+      <h1>{d.title}</h1>
+      <p class="entry__summary">{d.summary}</p>
+      <div class="entry__meta">
+        <span class="badge badge--status">{d.status}</span>
+        {d.sample && <span class="badge badge--sample">示例</span>}
+        {period?.start && (
+          <span class="entry__period">
+            {period.start} — {period.end ?? '进行中'}
+          </span>
+        )}
+        <time datetime={d.updated}>更新于 {formatDate(d.updated)}</time>
+      </div>
+      <TagList tags={d.tags} />
+    </header>
+
+    <dl class="spec">
+      <dt>角色</dt>
+      <dd>{d.role}</dd>
+      <dt>技术栈</dt>
+      <dd>{Array.isArray(d.stack) && d.stack.length > 0 ? d.stack.join(' · ') : '未填写'}</dd>
+      {
+        Array.isArray(d.links) && d.links.length > 0 && (
+          <>
+            <dt>链接</dt>
+            <dd>
+              {d.links.map((l: { label: string; url: string }) => (
+                <a href={l.url} rel="noopener noreferrer">{l.label}</a>
+              ))}
+            </dd>
+          </>
+        )
+      }
+    </dl>
+
+    <div class="prose">
+      <Content />
+    </div>
+
+    {
+      Array.isArray(d.outcomes) && d.outcomes.length > 0 && (
+        <section class="related">
+          <h2 class="related__title">可验证的结果</h2>
+          <ul>
+            {d.outcomes.map((o: string) => <li>{o}</li>)}
+          </ul>
+        </section>
+      )
+    }
+
+    {
+      (linkedKnowledge.length > 0 || linkedErrors.length > 0) && (
+        <section class="related">
+          <h2 class="related__title">关联条目</h2>
+          {linkedKnowledge.length > 0 && (
+            <>
+              <p class="related__label">知识</p>
+              <ul>
+                {linkedKnowledge.map((r) => <li><a href={href(r.path)}>{r.title}</a></li>)}
+              </ul>
+            </>
+          )}
+          {linkedErrors.length > 0 && (
+            <>
+              <p class="related__label">错误经验</p>
+              <ul>
+                {linkedErrors.map((r) => <li><a href={href(r.path)}>{r.title}</a></li>)}
+              </ul>
+            </>
+          )}
+        </section>
+      )
+    }
+  </article>
+</Base>

@@ -1,0 +1,106 @@
+---
+/**
+ * 复盘详情 — /journal/[date]/（C-9 #8）
+ * 路由参数是 YYYY-MM-DD，不是 DJ- 开头的 id。
+ */
+import { render } from 'astro:content';
+import Base from '../../layouts/Base.astro';
+import TagList from '../../components/TagList.astro';
+import { getAllJournal, getAllKnowledge, getAllProjects, getAllErrors, toListItem, type ContentEntry } from '../../lib/collections';
+import { formatDate, href } from '../../lib/format';
+
+export async function getStaticPaths() {
+  const entries = await getAllJournal();
+  return entries.map((entry) => ({
+    params: { date: String(entry.data.date) },
+    props: { entry },
+  }));
+}
+
+const { entry } = Astro.props;
+const { Content } = await render(entry);
+const d = entry.data;
+
+const [knowledge, projects, errors] = await Promise.all([getAllKnowledge(), getAllProjects(), getAllErrors()]);
+const maps = {
+  knowledge: new Map(knowledge.map((e) => [String(e.data.id).toUpperCase(), toListItem(e as ContentEntry)])),
+  project: new Map(projects.map((e) => [String(e.data.id).toUpperCase(), toListItem(e as ContentEntry)])),
+  error: new Map(errors.map((e) => [String(e.data.id).toUpperCase(), toListItem(e as ContentEntry)])),
+};
+
+const linkTo = (ids: string[] | undefined, map: Map<string, ReturnType<typeof toListItem>>, fallback: string) =>
+  (Array.isArray(ids) ? ids : []).map((id) => {
+    const hit = map.get(String(id).toUpperCase());
+    return { id, title: hit?.title ?? id, path: hit?.path ?? fallback };
+  });
+
+const linkedKnowledge = linkTo(d.linked_knowledge, maps.knowledge, '/knowledge/');
+const linkedProjects = linkTo(d.linked_projects, maps.project, '/projects/');
+const linkedErrors = linkTo(d.linked_errors, maps.error, '/errors/');
+const hasLinks = linkedKnowledge.length + linkedProjects.length + linkedErrors.length > 0;
+
+// 五个板块在 frontmatter 里算好，模板只负责渲染（避免在模板里做类型断言）
+const raw = d as unknown as Record<string, unknown>;
+const blocks = [
+  { label: '做了什么', items: Array.isArray(raw.did) ? (raw.did as string[]) : [] },
+  { label: '学到了什么', items: Array.isArray(raw.learned) ? (raw.learned as string[]) : [] },
+  { label: '卡在哪里', items: Array.isArray(raw.blocked) ? (raw.blocked as string[]) : [] },
+  { label: '明天', items: Array.isArray(raw.tomorrow) ? (raw.tomorrow as string[]) : [] },
+].filter((b) => b.items.length > 0);
+---
+
+<Base title={`${formatDate(d.date)} 复盘`} description={d.summary}>
+  <article class="entry">
+    <header class="entry__head">
+      <p class="entry__kind"><a href={href('/journal/')}>复盘</a></p>
+      <h1>{d.title}</h1>
+      <p class="entry__summary">{d.summary}</p>
+      <div class="entry__meta">
+        <time datetime={d.date}>{formatDate(d.date)}</time>
+        {typeof d.energy === 'number' && <span class="badge badge--confidence">精力 {d.energy}/5</span>}
+        {d.source === 'agent-drafted' && <span class="badge badge--kind">Agent 起草 · 已人工确认</span>}
+        {d.sample && <span class="badge badge--sample">示例</span>}
+      </div>
+      <TagList tags={d.tags} />
+    </header>
+
+    {
+      blocks.map((block) => (
+        <section class="related">
+          <h2 class="related__title">{block.label}</h2>
+          <ul>{block.items.map((x) => <li>{x}</li>)}</ul>
+        </section>
+      ))
+    }
+
+    <div class="prose">
+      <Content />
+    </div>
+
+    {
+      hasLinks && (
+        <section class="related">
+          <h2 class="related__title">关联条目</h2>
+          {linkedKnowledge.length > 0 && (
+            <>
+              <p class="related__label">知识</p>
+              <ul>{linkedKnowledge.map((r) => <li><a href={href(r.path)}>{r.title}</a></li>)}</ul>
+            </>
+          )}
+          {linkedProjects.length > 0 && (
+            <>
+              <p class="related__label">项目</p>
+              <ul>{linkedProjects.map((r) => <li><a href={href(r.path)}>{r.title}</a></li>)}</ul>
+            </>
+          )}
+          {linkedErrors.length > 0 && (
+            <>
+              <p class="related__label">错误经验</p>
+              <ul>{linkedErrors.map((r) => <li><a href={href(r.path)}>{r.title}</a></li>)}</ul>
+            </>
+          )}
+        </section>
+      )
+    }
+  </article>
+</Base>

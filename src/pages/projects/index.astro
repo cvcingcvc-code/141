@@ -1,0 +1,33 @@
+---
+/**
+ * 项目列表 — /projects/（C-9 #5）
+ */
+import Base from '../../layouts/Base.astro';
+import ContentCard from '../../components/ContentCard.astro';
+import { getAllProjects, toListItem, type ContentEntry } from '../../lib/collections';
+import { href } from '../../lib/format';
+
+const items = (await getAllProjects()).map((e) => toListItem(e as ContentEntry));
+---
+
+<Base title="项目" description="在做与做完的项目：技术栈、周期与可验证的结果。">
+  <header class="page-head">
+    <h1>项目</h1>
+    <p class="page-head__desc">每条项目记录包含角色、周期、技术栈与可验证的结果，不用「提升很多」这类空话。</p>
+  </header>
+
+  {
+    items.length === 0 ? (
+      <div class="empty-state">
+        <p class="empty-state__title">还没有已发布的项目记录</p>
+        <p class="empty-state__desc">
+          项目条目同样需要人工确认后才发布。<a href={href('/about/')}>查看发布规则</a>。
+        </p>
+      </div>
+    ) : (
+      <div class="content-list">
+        {items.map((item) => <ContentCard item={item} kind="project" />)}
+      </div>
+    )
+  }
+</Base>

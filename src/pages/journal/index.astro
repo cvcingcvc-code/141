@@ -1,0 +1,34 @@
+---
+/**
+ * 复盘列表 — /journal/（C-9 #7）
+ * 只展示 review_status: approved 且已发布的条目（由 collections 过滤）。
+ */
+import Base from '../../layouts/Base.astro';
+import ContentCard from '../../components/ContentCard.astro';
+import { getAllJournal, toListItem, type ContentEntry } from '../../lib/collections';
+import { href } from '../../lib/format';
+
+const items = (await getAllJournal()).map((e) => toListItem(e as ContentEntry));
+---
+
+<Base title="复盘" description="按日期沉淀的复盘：做了什么、学到什么、卡在哪里。">
+  <header class="page-head">
+    <h1>复盘</h1>
+    <p class="page-head__desc">按日期倒序。未定稿的复盘不会出现在这里，草稿即使提交也不会发布。</p>
+  </header>
+
+  {
+    items.length === 0 ? (
+      <div class="empty-state">
+        <p class="empty-state__title">还没有已批准的复盘</p>
+        <p class="empty-state__desc">
+          复盘必须由本人确认（review_status: approved）才会上站。<a href={href('/about/')}>查看发布规则</a>。
+        </p>
+      </div>
+    ) : (
+      <div class="content-list">
+        {items.map((item) => <ContentCard item={item} kind="journal" />)}
+      </div>
+    )
+  }
+</Base>

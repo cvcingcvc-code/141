@@ -1,0 +1,20 @@
+---
+/**
+ * TagList — 标签（C-13）
+ * v0.1 只渲染纯文本标签，不做链接（标签聚合页延后至 v0.2）。
+ */
+interface Props {
+  tags: string[];
+}
+const { tags } = Astro.props;
+---
+
+{
+  tags && tags.length > 0 && (
+    <ul class="tag-list" aria-label="标签">
+      {tags.map((tag) => (
+        <li class="tag">{tag}</li>
+      ))}
+    </ul>
+  )
+}

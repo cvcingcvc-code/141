@@ -1,0 +1,33 @@
+---
+/**
+ * StatusBadge — knowledge 状态与可信度（C-13）
+ * 没有 status 时什么都不渲染，避免在非知识页出现空徽章。
+ */
+interface Props {
+  status?: string;
+  confidence?: string;
+}
+const { status, confidence } = Astro.props;
+
+const statusLabel: Record<string, string> = {
+  seed: '萌芽 · 未验证',
+  verified: '已核实',
+  stale: '过时待复核',
+  archived: '已归档',
+};
+
+const confidenceLabel: Record<string, string> = {
+  low: '可信度低',
+  medium: '可信度中',
+  high: '可信度高',
+};
+---
+
+{
+  status && (
+    <span class="badge-group">
+      <span class={`badge badge--status badge--status-${status}`}>{statusLabel[status] ?? status}</span>
+      {confidence && <span class="badge badge--confidence">{confidenceLabel[confidence] ?? confidence}</span>}
+    </span>
+  )
+}

@@ -1,0 +1,70 @@
+---
+/**
+ * 知识详情 — /knowledge/[id]/（C-9 #4）
+ */
+import { render } from 'astro:content';
+import Base from '../../layouts/Base.astro';
+import StatusBadge from '../../components/StatusBadge.astro';
+import SourceList from '../../components/SourceList.astro';
+import TagList from '../../components/TagList.astro';
+import { getAllKnowledge, toListItem, type ContentEntry } from '../../lib/collections';
+import { formatDate, href } from '../../lib/format';
+
+export async function getStaticPaths() {
+  const entries = await getAllKnowledge();
+  return entries.map((entry) => ({
+    params: { id: String(entry.data.id).toLowerCase() },
+    props: { entry },
+  }));
+}
+
+const { entry } = Astro.props;
+const { Content } = await render(entry);
+const d = entry.data;
+
+// 关联条目显示标题而不是裸 id（id 只在没有对应条目时兜底显示）
+const all = (await getAllKnowledge()).map((e) => toListItem(e as ContentEntry));
+const titleOf = new Map(all.map((i) => [i.id.toUpperCase(), { title: i.title, path: i.path }]));
+const related = (Array.isArray(d.related) ? d.related : []).map((id: string) => {
+  const hit = titleOf.get(String(id).toUpperCase());
+  return { id, title: hit?.title ?? id, path: hit?.path ?? `/knowledge/${String(id).toLowerCase()}/` };
+});
+---
+
+<Base title={d.title} description={d.summary}>
+  <article class="entry">
+    <header class="entry__head">
+      <p class="entry__kind"><a href={href('/knowledge/')}>知识</a></p>
+      <h1>{d.title}</h1>
+      <p class="entry__summary">{d.summary}</p>
+      <div class="entry__meta">
+        <StatusBadge status={d.status} confidence={d.confidence} />
+        {d.sample && <span class="badge badge--sample">示例</span>}
+        <span class="entry__domain">{d.domain}</span>
+        <time datetime={d.updated}>更新于 {formatDate(d.updated)}</time>
+      </div>
+      <TagList tags={d.tags} />
+    </header>
+
+    <div class="prose">
+      <Content />
+    </div>
+
+    <SourceList sources={d.sources} />
+
+    {
+      related.length > 0 && (
+        <section class="related">
+          <h2 class="related__title">相关条目</h2>
+          <ul>
+            {related.map((r) => (
+              <li>
+                <a href={href(r.path)}>{r.title}</a>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )
+    }
+  </article>
+</Base>
