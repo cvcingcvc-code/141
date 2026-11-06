@@ -170,9 +170,14 @@ function scanHistory(n) {
 function scanDist(dist) {
   const real = [];
   const whitelisted = [];
+  const vendored = [];
   let scanned = 0;
-  if (!existsSync(dist)) return { exists: false, scanned, real, whitelisted };
+  if (!existsSync(dist)) return { exists: false, scanned, real, whitelisted, vendored };
   const BIN_EXTS = /\.(png|jpe?g|gif|webp|ico|woff2?|ttf|eot|mp3|mp4|zip|gz|pdf|lock|br)$/i;
+  // 第三方构建产物（pagefind CLI 与 Vite 打包出的 JS/CSS）：里面是上游作者的联系方式、
+  // 压缩后的常量等，不属于本站内容，也不构成本站 PII。单独归类并打印，**不是白名单**：
+  // 若这些路径下出现本站凭据，仍会在下方 L1/L2 层被捕获（内容源都在仓库里）。
+  const VENDOR_PATH = /^(pagefind|_astro)\//;
   function walk(dir) {
     for (const name of readdirSync(dir)) {
       const p = join(dir, name);
@@ -183,6 +188,10 @@ function scanDist(dist) {
         try { text = readFileSync(p, 'utf8'); } catch { continue; }
         scanned++;
         const rel = relative(dist, p).replace(/\\/g, '/');
+        if (VENDOR_PATH.test(rel)) {
+          vendored.push('dist/' + rel);
+          continue;
+        }
         const { real: r, whitelisted: w } = classify('dist/' + rel, scanText(text));
         r.forEach((x) => real.push({ file: 'dist/' + rel, ...x }));
         w.forEach((x) => whitelisted.push({ file: 'dist/' + rel, ...x }));
@@ -190,7 +199,7 @@ function scanDist(dist) {
     }
   }
   walk(dist);
-  return { exists: true, scanned, real, whitelisted };
+  return { exists: true, scanned, real, whitelisted, vendored };
 }
 
 function main() {
@@ -216,7 +225,7 @@ function main() {
   console.log('--- L3 构建产物 ---');
   const l3 = scanDist(args.dist);
   if (!l3.exists) console.log('  dist/ 不存在（尚未构建或已清理）');
-  else console.log(`  扫描 ${l3.scanned} 个文本文件，真实命中 ${l3.real.length}，白名单 ${l3.whitelisted.length}`);
+  else console.log(`  扫描 ${l3.scanned} 个文本文件（另跳过 ${(l3.vendored || []).length} 个第三方打包产物：pagefind/_astro），真实命中 ${l3.real.length}，白名单 ${l3.whitelisted.length}`);
   l3.real.forEach((x) => console.log(`  [真实] ${x.file}:${x.line} ${x.label} ${x.value}`));
   l3.whitelisted.forEach((x) => console.log(`  [白名单] ${x.file}:${x.line} ${x.label} ${x.value} (${x.reason})`));
 
@@ -230,7 +239,7 @@ function main() {
   const out = {
     l1: { scanned: l1.scanned, real: l1.real, whitelisted: l1.whitelisted },
     l2: { commits: l2.commits, real: l2.real, whitelisted: l2.whitelisted },
-    l3: { exists: l3.exists, scanned: l3.scanned, real: l3.real, whitelisted: l3.whitelisted },
+    l3: { exists: l3.exists, scanned: l3.scanned, real: l3.real, whitelisted: l3.whitelisted, vendored: l3.vendored || [] },
     conclusion,
     exitCode: totalReal === 0 ? 0 : 1,
   };
