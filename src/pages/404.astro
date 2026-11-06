@@ -1,28 +1,16 @@
 ---
-const base = import.meta.env.BASE_URL;
+// 404 — GitHub Pages 固定文件名（C-9 路由 #12）
+import Base from "../layouts/Base.astro";
+
+const rawBase = import.meta.env.BASE_URL;
+const base = rawBase.endsWith("/") ? rawBase : `${rawBase}/`;
 ---
-<!doctype html>
-<html lang="zh-CN">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>404 — Personal Knowledge OS</title>
-  <style>
-    body {
-      margin: 0;
-      font-family: system-ui, -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
-      color: #1f2933;
-      max-width: 720px;
-      padding: 4rem 1.25rem;
-      margin-inline: auto;
-      line-height: 1.7;
-    }
-    a { color: #1d4ed8; }
-  </style>
-</head>
-<body>
-  <h1>404</h1>
-  <p>这个地址没有对应的内容，或者它还未被发布。</p>
-  <p><a href={base}>回到首页</a></p>
-</body>
-</html>
+
+<Base title="404">
+  <div class="notfound">
+    <p class="notfound__code">404</p>
+    <h1>没有找到这个页面</h1>
+    <p>这个地址没有对应的内容，或者它还未被发布。</p>
+    <p><a href={base}>回到首页</a></p>
+  </div>
+</Base>

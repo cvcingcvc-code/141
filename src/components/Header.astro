@@ -1,0 +1,51 @@
+---
+// Header — 站点页头：站点名 + 主导航
+// 所有链接经 import.meta.env.BASE_URL 拼接，兼容 GitHub Pages 子路径 /141/
+// BASE_URL 等于配置原值 "/141"（无尾斜杠），统一归一化为 "/141/" 再拼接
+const rawBase = import.meta.env.BASE_URL;
+const base = rawBase.endsWith("/") ? rawBase : `${rawBase}/`;
+const pathname = Astro.url.pathname;
+
+interface NavItem {
+  label: string;
+  href: string;
+}
+
+// 与 C-9 路由契约一致的导航项（路由本身在 T3.2 落地）
+const navItems: NavItem[] = [
+  { label: "知识", href: `${base}knowledge/` },
+  { label: "项目", href: `${base}projects/` },
+  { label: "复盘", href: `${base}journal/` },
+  { label: "错误", href: `${base}errors/` },
+  { label: "搜索", href: `${base}search/` },
+  { label: "关于", href: `${base}about/` },
+];
+
+// 归一化比较：去掉结尾斜杠后比对，命中即高亮当前栏目
+const normalize = (p: string) => p.replace(/\/+$/, "");
+const current = normalize(pathname);
+---
+
+<header class="site-header">
+  <div class="container site-header__inner">
+    <a class="site-title" href={base}>Personal Knowledge OS</a>
+    <nav class="site-nav" aria-label="主导航">
+      <ul>
+        {
+          navItems.map((item) => (
+            <li>
+              <a
+                href={item.href}
+                aria-current={
+                  normalize(item.href) === current ? "page" : undefined
+                }
+              >
+                {item.label}
+              </a>
+            </li>
+          ))
+        }
+      </ul>
+    </nav>
+  </div>
+</header>

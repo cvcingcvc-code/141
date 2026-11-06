@@ -1,0 +1,43 @@
+---
+// Base — 站点通用布局：HTML 骨架 + 页头页脚 + 全局样式
+// 用法：<Base title="..." description="...">...</Base>
+import "../styles/global.css";
+import Header from "../components/Header.astro";
+import Footer from "../components/Footer.astro";
+
+interface Props {
+  title: string;
+  description?: string;
+}
+
+const {
+  title,
+  description = "Personal Knowledge OS — 个人知识库：知识、项目、复盘与错误经验，可追溯、可搜索。",
+} = Astro.props;
+
+const fullTitle =
+  title === "Personal Knowledge OS"
+    ? title
+    : `${title} — Personal Knowledge OS`;
+---
+
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content={description} />
+    <title>{fullTitle}</title>
+  </head>
+  <body>
+    <div class="site-shell">
+      <Header />
+      <main class="site-main">
+        <div class="container">
+          <slot />
+        </div>
+      </main>
+      <Footer />
+    </div>
+  </body>
+</html>
