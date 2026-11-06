@@ -120,7 +120,8 @@ function main() {
   }
 
   for (const e of [...hidden, ...sample]) {
-    grepDist(String(e.id), e.category);
+    // 只用 title 作为泄漏探针：id 可能是通用词/路径片段（如 "profile"），
+    // 会误命中 counts 键或空状态文案里的路径说明，产生假阳性。
     if (e.title) grepDist(String(e.title), e.category);
   }
 

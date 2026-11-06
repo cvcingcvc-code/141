@@ -112,6 +112,7 @@ async function measure(port, url, width) {
     returnByValue: true,
     expression: `(() => {
       const el = document.documentElement;
+      const pre = document.querySelector('.prose pre');
       return {
         title: document.title,
         h1: (document.querySelector('h1')||{}).textContent || null,
@@ -119,6 +120,7 @@ async function measure(port, url, width) {
         scrollWidth: el.scrollWidth,
         clientWidth: el.clientWidth,
         hasHorizontalScroll: el.scrollWidth > el.clientWidth,
+        codeBlock: pre ? { scrollWidth: pre.scrollWidth, clientWidth: pre.clientWidth, overflows: pre.scrollWidth > pre.clientWidth } : null,
       };
     })()`,
   });
@@ -153,6 +155,10 @@ async function main() {
         const verdict = m.hasHorizontalScroll ? '有横向滚动 ❌' : '无横向滚动 ✅';
         results.push({ url: rel, view: w, ...m, verdict });
         console.log(`  [${verdict}] ${w}px  ${rel}  scrollWidth=${m.scrollWidth} clientWidth=${m.clientWidth}  title="${m.title}"`);
+        if (m.codeBlock) {
+          const cb = m.codeBlock.overflows ? '代码块内部横向溢出（overflow-x auto 生效）✅' : '代码块未溢出';
+          console.log(`        代码块：scrollWidth=${m.codeBlock.scrollWidth} clientWidth=${m.codeBlock.clientWidth} → ${cb}`);
+        }
       }
     }
     const bad = results.filter((r) => r.hasHorizontalScroll);

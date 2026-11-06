@@ -94,11 +94,17 @@ function main() {
     const expected = join(dist, rel, 'index.html');
     if (!existsSync(expected)) issues.push(`item ${it.id} 无对应 HTML：${it.path}`);
   }
-  // 反向：dist 里多出的内容页（排除固定页）
+  // 反向：dist 里多出的「详情页」应有对应 item。
+  // 详情页 = dist/<type>/<id>/index.html（相对路径 3 段）；固定页/列表页为
+  // dist/index.html、dist/404.html、dist/<type>/index.html（1~2 段），不参与反向核对。
+  const sep = dist.endsWith('/') || dist.endsWith('\\') ? '' : '\\';
   const itemPaths = new Set(items.map((it) => join(dist, it.path.replace(/^\/+/, '').replace(/\/$/, ''), 'index.html')));
   for (const h of htmlFiles) {
-    if (h.endsWith('404.html') || h.endsWith('index.html')) continue;
-    if (!itemPaths.has(h)) issues.push(`HTML 页面无对应 item：${h}`);
+    const rel = h.slice(dist.length).replace(/^[\\/]+/, '').replace(/\\/g, '/');
+    const parts = rel.split('/');
+    if (parts.length === 3 && parts[2] === 'index.html') {
+      if (!itemPaths.has(h)) issues.push(`HTML 详情页无对应 item：${rel}`);
+    }
   }
 
   // 4) Pagefind 与 content.json 条目数一致性（近似：以 pagefind 片段文件为准）
