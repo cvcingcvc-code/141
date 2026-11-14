@@ -70,6 +70,9 @@ function isPlaceholderValue(ruleId, value) {
 const KNOWN_VALUE_SHA256 = new Map([
   ['22ce5326d61f7b806ea272ef00a50e941a875b174866dddac2a4f9d753f5069a', '已知值白名单（INC-001：所有者公开身份邮箱，用户已批准接受、不重写历史）'],
   ['0c7e6a405862e402eb76a70f8a26fc732d07c32931e9fae9ab1582911d2e8a3b', '已知值白名单（非真实地址的测试占位符，当前树已改为 @example.com，仅历史残留）'],
+  ['04e7358a07d7a12d426f8a3091293b19fd7a278b56163c5e9f7f0c7b41e7d233', '已知值白名单（QA 复现步骤中的合成身份证号假值，非真实 PII，仅历史残留）'],
+  ['a6942f9771d67f34034d2f1926988ed3fad3bf1b4e7cedb9a31f31398dea43bc', '已知值白名单（QA 复现步骤中的合成手机号假值，非真实 PII，仅历史残留）'],
+  ['ba6c167e885ea4be8252fb01c61fc55439089f389ee1b0592fc8c4f417196403', '已知值白名单（QA 复现步骤中的合成手机号假值，非真实 PII，仅历史残留）'],
 ]);
 
 function sha256(text) {

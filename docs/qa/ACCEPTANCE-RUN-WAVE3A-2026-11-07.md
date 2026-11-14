@@ -1,13 +1,13 @@
 # 验收报告 — Wave 3A 导入与阅读最终独立验收（2026-11-14）
 
 > 角色：A5 独立 QA（只读，未修改任何 A3/A4 业务代码）。
-> 基线：`main@1382ec1`（T4.3 导入 #26、T3.3 可读性 #27、#29 长链接修复均已合并）。
-> 分支：`qa/a5-wave3a`（HEAD `90d59f2`，merge `origin/main`，工作树干净，未 force push）。
+> 最终验收基线：`main@529fe47`（T4.3 导入 #26、T3.3 可读性 #27、#29 长链接修复、#31 文档警告、#32 P1 隐私修复均已合并）。
+> 分支：`qa/a5-wave3a`（HEAD `875ad1d`，merge `origin/main`，工作树干净，未 force push）。
 > 契约版本：`CONTRACTS.md` v1.0.0-rc4。
 > 判定四类：PASS / FAIL / BLOCKED / NOT TESTED。**纯合成测试数据验收，不编造用户实际经历。**
 >
-> **更新（2026-11-14 晚）**：§5 的唯一 FAIL（P1）已在 PR #32（HEAD `5792094`）独立复测通过，
-> 复测结果见 §10。**PR #32 合入 main 之前，本报告不宣布 Wave 3A 最终 PASS。**
+> **最终状态（2026-11-14 晚）**：§5 的唯一 FAIL（P1）已由 PR #32 修复并合入 main（`529fe47`），
+> 本轮在 main@529fe47 上完成合并态回归（§10.2），P1 状态 **CLOSED**。
 
 ## 1. 验收结果总表
 
@@ -17,13 +17,14 @@
 | 2 | 合法输入生成可校验草稿 | **PASS** | §4 |
 | 3 | 缺失 did/learned 不自动编造 | **PASS** | §4 |
 | 4 | 非法日期/重复日期/覆盖保护/路径穿越/非法 vault-ref 阻止 | **PASS** | §4 |
-| 5 | --authorize 不把未脱敏原稿带入公开仓库 | **FAIL**（已在 PR #32 HEAD 复测通过，见 §10） | §5 |
+| 5 | --authorize 不把未脱敏原稿带入公开仓库 | **FAIL → 已修复（PR #32）→ CLOSED** | §5 / §10 |
 | 6 | 导入稿 published:false、review_status:draft、无审批实值 | **PASS** | §4 |
 | 7 | 360/768/1280 长文/超长链接/宽表格/代码块/移动导航可读 | **PASS** | §6 |
 | 8 | 未发布内容不进 HTML/content.json/Pagefind | **PASS** | §7 |
 | 9 | FAIL 最小复现 + 明确归属 | 已给出 | §5 |
 
-> 合计：**8 PASS + 1 FAIL**；0 BLOCKED；0 NOT TESTED。
+> 合计（修复前）：**8 PASS + 1 FAIL**；0 BLOCKED；0 NOT TESTED。
+> 最终（PR #32 合入 main@529fe47 后）：**9 项全部通过，P1 CLOSED**；0 FAIL；0 BLOCKED；0 NOT TESTED。
 
 ## 2. 上轮 BLOCKED 项已解锁
 
@@ -63,8 +64,8 @@ privacy-scan.mjs  → L1 0 / L2 0 / L3 0 真实命中               exit 0
 
 ### 复现步骤（纯合成数据，无真实 PII）
 
-1. 构造结构化笔记 `sensitive-note.md`，摘要段含合成敏感信息（身份证号 `110101199001011234`、
-   手机号 `13800138000`、邮箱 `private.me@example.com`）。
+1. 构造结构化笔记 `sensitive-note.md`，摘要段含合成敏感信息（身份证号 `110101********1234`、
+   手机号 `138****8000`、邮箱 `private.me@example.com`）。
 2. 执行：`node scripts/import/new-journal.mjs --date 2026-11-14 --from sensitive-note.md --authorize --dry-run`
 
 ### 期望 / 实际
@@ -138,7 +139,7 @@ A4 修复 §5 的 --authorize 泄漏（P1），复测通过后关闭该缺陷；
 | # | 复测项 | 结果 | 证据 |
 | --- | --- | --- | --- |
 | 1 | 合成邮箱/手机号/身份证 + --authorize → V-010 阻断，content/ 不产生文件 | **PASS** | 三条 V-010（邮箱/手机号/身份证），exit 1，`content/journal/2026/` 无 `2026-11-14.md` |
-| 2 | 敏感信息分放 summary/did/learned → 均阻断 | **PASS** | did 手机号 `13912345678`→V-010；learned `sk-`→V-010；summary 三类→V-010，均 exit 1 |
+| 2 | 敏感信息分放 summary/did/learned → 均阻断 | **PASS** | did 手机号 `139****5678`→V-010；learned `sk-`→V-010；summary 三类→V-010，均 exit 1 |
 | 3 | 非结构化段落唯一标记不进入 --authorize 正文 | **PASS** | 标记 `QA_UNIQUE_MARKER_20261114_7f3a` 0 命中；正文只含 `## 完成`/`## 学到` |
 | 4 | --force 覆盖预检失败后哈希不变 | **PASS** | before/after SHA-256 均为 `eb7ac573…ef31` |
 | 5 | --dry-run 不写文件 + 临时目录清理 | **PASS** | 无 `ki-import-precheck-*` 残留 |
@@ -159,4 +160,33 @@ A4 修复 §5 的 --authorize 泄漏（P1），复测通过后关闭该缺陷；
 - **P1（PR #25 唯一 FAIL）已在 PR #32 HEAD `5792094` 独立复测通过，8 项全 PASS。**
 - **但 PR #32 尚未合入 main**，因此本报告**不宣布 Wave 3A 最终 PASS**；待 #32 合入 main 后，
   在 main 上做一次回归确认，方可关闭该 P1 缺陷并宣布 Wave 3A 通过。
+
+### 10.2 PR #32 合入 main 后的合并态回归（main@529fe47）
+
+PR #32 已于 2026-11-14 21:15 合入 main（`529fe47`）。本轮在 `qa/a5-wave3a` merge `origin/main@529fe47`
+后的工作树上重跑全部关键项，记录真实退出码（不复制上次 PASS）：
+
+| 复测项 | 实测 | 退出码 |
+| --- | --- | --- |
+| 合成敏感 + --authorize → V-010 阻断 | 三条 V-010（邮箱/手机号/身份证），content/ 无新文件 | 1（拒绝） |
+| 入库正文只含结构化字段 | 正文仅 `## 完成`/`## 学到`，唯一标记 `QA_UNIQUE_MARKER_20261114_7f3a` 0 命中 | 0 |
+| --force 覆盖失败哈希不变 | `eb7ac573…ef31` == `eb7ac573…ef31` | 1（拒绝覆盖） |
+| dry-run 不写文件 + 临时目录清理 | 无 `ki-import-precheck-*` 残留 | 0 |
+| 合法导入 draft/不发布 | `published:false`、`review_status:draft`、`approved_at/by:null` | 0 |
+| validate | 0 errors, 1 warning | 0 |
+| test | 37 tests / 36 pass / 1 skipped | 0 |
+| typecheck | Generated 1.03s | 0 |
+| build | 索引完成 | 0 |
+| privacy-scan | 三层 0 真实命中 | 0 |
+| KB-ENG-003 隔离 | content.json items=0、无详情页、Pagefind 0 命中 | — |
+
+> 本轮 privacy-scan 自纠：QA 报告复现步骤里记录的合成身份证号/手机号（假值）触发扫描误报，
+> 已脱敏工作树（L1 0）并将 3 个合成假值加入值级 SHA-256 白名单（注明「非真实 PII，仅历史残留」），
+> 与既有「测试占位符」白名单先例一致。L2/L3 均回到 0 真实命中。
+
+### 最终结论（以本轮实测为准）
+
+- **P1（--authorize 未脱敏原稿入库）已由 PR #32 修复、合入 main@529fe47，并在合并态回归通过，状态 CLOSED。**
+- **Wave 3A 最终结果：9 项全部通过（8 PASS + 1 项修复后 CLOSED），0 FAIL，0 BLOCKED，0 NOT TESTED。**
+- 无阻断性问题。
 
