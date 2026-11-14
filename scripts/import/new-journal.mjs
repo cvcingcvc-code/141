@@ -26,13 +26,16 @@
  * 退出码：0 成功（或 dry-run）；1 参数/校验/安全拒绝
  */
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { execFileSync } from 'node:child_process';
 
 import yaml from 'js-yaml';
 
 import { isRealDate, parseEntry } from '../../src/content/schema.ts';
+// 复用 A2 校验器的文件级实现（含 V-001/schema/V-006/V-017/V-010 PII），
+// 避免复制出第二套 V-010 规则；本 PR 不修改 scripts/validate-content.mjs（A2 所有）。
+import { loadContent } from '../validate-content.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, '..', '..');
@@ -222,6 +225,61 @@ function buildFrontmatter(o) {
   return { fm, bodyFrom: o.body };
 }
 
+/* ------------------------- 正文与预检 -------------------------- */
+
+/**
+ * 未授权草稿（仓库外）的正文：保留 --from 原文，方便用户自己看。
+ * 该场景不写公开仓库，保留原文是安全的。
+ */
+function rawBodySection(rawBody) {
+  return `## 原始记录\n\n${rawBody || '（无 --from，正文待补充）'}\n`;
+}
+
+/**
+ * --authorize 入库的正文：只从**已确认的结构化字段**生成，绝不复制 --from 原文。
+ * 理由（P1 修复）：原稿可能含未脱敏的私人信息，直接整段复制进公开仓库等同泄漏。
+ * 原稿需要私密保留时，用 --vault-ref 只留 vault: 指针。
+ */
+function structuredBody(o) {
+  const lines = [];
+  const section = (title, items) => {
+    if (!items || items.length === 0) return;
+    if (lines.length > 0) lines.push('');
+    lines.push(`## ${title}`, '');
+    for (const x of items) lines.push(`- ${x}`);
+  };
+  section('完成', o.did.map((x) => x.trim()).filter(Boolean));
+  section('学到', o.learned.map((x) => x.trim()).filter(Boolean));
+  section('卡住', o.blocked.map((x) => x.trim()).filter(Boolean));
+  section('明天', o.tomorrow.map((x) => x.trim()).filter(Boolean));
+  return `${lines.join('\n')}\n`;
+}
+
+/** 完整候选 Markdown（frontmatter + 正文），与最终写盘内容逐字一致 */
+function buildCandidate(fm, body) {
+  const yamlText = yaml.dump(fm, { lineWidth: -1, noRefs: true });
+  return `---\n${yamlText}---\n\n${body}`;
+}
+
+/**
+ * 写盘前预检：把候选 Markdown 写到系统临时目录的 journal/<YYYY>/ 下，
+ * 调用 A2 的 loadContent 做文件级校验（V-001 / schema / V-006 / V-017 / V-010 PII）。
+ * 复用现有实现、不复制 V-010 规则；临时目录用完即删。
+ * @returns {Array<{code:string,field:string,message:string}>} 仅 V-* 错误（W-* 警告不阻断，与 validate 一致）
+ */
+function preflightCheck(candidateMd, date) {
+  const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'ki-import-precheck-'));
+  try {
+    const dir = path.join(tmpRoot, 'journal', date.slice(0, 4));
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(path.join(dir, `${date}.md`), candidateMd, 'utf8');
+    const { violations } = loadContent(tmpRoot);
+    return violations.filter((v) => String(v.code).startsWith('V-'));
+  } finally {
+    fs.rmSync(tmpRoot, { recursive: true, force: true });
+  }
+}
+
 /* --------------------------- 输出路径 --------------------------- */
 
 function resolveOutput(args, date) {
@@ -278,20 +336,40 @@ function main() {
   const { fm } = buildFrontmatter(o);
   const out = resolveOutput(args, args.date);
 
+  // 已存在：已发布条目永不覆盖；--force 只允许覆盖 draft
   if (fs.existsSync(out.file)) {
     const existing = fs.readFileSync(out.file, 'utf8');
     if (/^published:\s*true\s*$/m.test(existing)) fail(`拒绝：${toPosix(out.file)} 已存在且 published: true，脚本不覆盖已发布内容`);
     if (!args.force) fail(`拒绝：${toPosix(out.file)} 已存在（同日期已有草稿/条目）。确认覆盖加 --force`);
   }
 
-  const yamlText = yaml.dump(fm, { lineWidth: -1, noRefs: true });
-  const content = `---\n${yamlText}---\n\n## 原始记录\n\n${body || '（无 --from，正文待补充）'}\n`;
+  // 正文按目标位置分离（P1 修复核心）：
+  //  - 仓库外草稿：保留 --from 原文（不进公开仓库，私密安全）
+  //  - 入库 content/：只从结构化字段生成，绝不复制原文
+  const bodySection = out.inRepo ? structuredBody(o) : rawBodySection(body);
+  const content = buildCandidate(fm, bodySection);
 
   const where = out.inRepo ? '仓库内 content/' : '仓库外草稿目录';
   console.log(`将写入（${where}）：${toPosix(out.file)}`);
+  if (out.inRepo) {
+    console.log('正文：由 did/learned 等结构化字段生成；--from 原文不写入公开仓库（原稿私密保留请用 --vault-ref）');
+  }
+
+  // 写盘前预检（P1 修复）：只对要进入 content/ 的候选内容执行；dry-run 同样执行，不绕过安全检查。
+  // 失败 → 不写盘、不产生任何新文件、不触碰已有文件，退出码 1。
+  if (out.inRepo) {
+    const errors = preflightCheck(content, args.date);
+    if (errors.length > 0) {
+      process.stderr.write('预检失败：候选内容含敏感信息或不合规，已拒绝写入 content/（未产生任何文件）\n');
+      for (const e of errors) process.stderr.write(`  ${e.code} ${e.field}: ${e.message}\n`);
+      process.exit(1);
+    }
+    console.log('预检通过：无 V-010 敏感信息、Schema 合规（复用 scripts/validate-content.mjs 的 loadContent）');
+  }
 
   if (args.dryRun) {
     console.log(`--- dry-run 内容预览 ---\n${content}`);
+    console.log(`--dry-run：未落盘${out.inRepo ? '（写盘前预检已执行）' : ''}`);
     return;
   }
 
@@ -300,14 +378,6 @@ function main() {
   console.log(`已生成 draft 草稿：${toPosix(out.file)}`);
   console.log('状态：review_status=draft, published=false, source=' + fm.source + '，无实值审批证据 —— 不会上站');
   console.log('下一步：npm run validate → 提 PR → 用户审核 → 合并；本脚本不 commit/merge/发布');
-
-  // 生成后立即用仓库校验器复验（双保险；不在 dry-run 下执行）
-  try {
-    execFileSync(process.execPath, [path.join(REPO_ROOT, 'scripts', 'validate-content.mjs')], { stdio: 'inherit' });
-  } catch {
-    console.error('\n校验未通过（文件已写出）。按上面报错改完再提交。');
-    process.exit(1);
-  }
 }
 
 main();
