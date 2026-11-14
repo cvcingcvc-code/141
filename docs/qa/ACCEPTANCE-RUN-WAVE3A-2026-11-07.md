@@ -5,6 +5,9 @@
 > 分支：`qa/a5-wave3a`（HEAD `90d59f2`，merge `origin/main`，工作树干净，未 force push）。
 > 契约版本：`CONTRACTS.md` v1.0.0-rc4。
 > 判定四类：PASS / FAIL / BLOCKED / NOT TESTED。**纯合成测试数据验收，不编造用户实际经历。**
+>
+> **更新（2026-11-14 晚）**：§5 的唯一 FAIL（P1）已在 PR #32（HEAD `5792094`）独立复测通过，
+> 复测结果见 §10。**PR #32 合入 main 之前，本报告不宣布 Wave 3A 最终 PASS。**
 
 ## 1. 验收结果总表
 
@@ -14,7 +17,7 @@
 | 2 | 合法输入生成可校验草稿 | **PASS** | §4 |
 | 3 | 缺失 did/learned 不自动编造 | **PASS** | §4 |
 | 4 | 非法日期/重复日期/覆盖保护/路径穿越/非法 vault-ref 阻止 | **PASS** | §4 |
-| 5 | --authorize 不把未脱敏原稿带入公开仓库 | **FAIL** | §5 |
+| 5 | --authorize 不把未脱敏原稿带入公开仓库 | **FAIL**（已在 PR #32 HEAD 复测通过，见 §10） | §5 |
 | 6 | 导入稿 published:false、review_status:draft、无审批实值 | **PASS** | §4 |
 | 7 | 360/768/1280 长文/超长链接/宽表格/代码块/移动导航可读 | **PASS** | §6 |
 | 8 | 未发布内容不进 HTML/content.json/Pagefind | **PASS** | §7 |
@@ -121,3 +124,39 @@ Pagefind 片段 grep 标题/正文关键词 0 命中。
 
 A4 修复 §5 的 --authorize 泄漏（P1），复测通过后关闭该缺陷；
 表格 display:block 堆叠是否调整由 A3 决策，不阻断本轮。
+
+## 10. P1 修复独立复测（PR #32 HEAD `5792094`）
+
+> 目标 PR：`https://github.com/cvcingcvc-code/141/pull/32`（`feat/a4-import-privacy`，HEAD `5792094`，
+> 未合并 main）。复测在 detached HEAD `5792094` 上独立执行，未修改 A4 业务代码。
+> 修复内容：`scripts/import/new-journal.mjs` 写盘前预检（复用 A2 `loadContent` 做 V-010 + Schema）
+> + `--authorize` 正文只从 did/learned 等结构化字段生成、不复制 `--from` 原文；`docs/IMPORT.md`
+> 补充「自动检查拦不住人名/公司名/内部系统名等非格式化隐私」的说明。
+
+### 复测结果（8 项全 PASS）
+
+| # | 复测项 | 结果 | 证据 |
+| --- | --- | --- | --- |
+| 1 | 合成邮箱/手机号/身份证 + --authorize → V-010 阻断，content/ 不产生文件 | **PASS** | 三条 V-010（邮箱/手机号/身份证），exit 1，`content/journal/2026/` 无 `2026-11-14.md` |
+| 2 | 敏感信息分放 summary/did/learned → 均阻断 | **PASS** | did 手机号 `13912345678`→V-010；learned `sk-`→V-010；summary 三类→V-010，均 exit 1 |
+| 3 | 非结构化段落唯一标记不进入 --authorize 正文 | **PASS** | 标记 `QA_UNIQUE_MARKER_20261114_7f3a` 0 命中；正文只含 `## 完成`/`## 学到` |
+| 4 | --force 覆盖预检失败后哈希不变 | **PASS** | before/after SHA-256 均为 `eb7ac573…ef31` |
+| 5 | --dry-run 不写文件 + 临时目录清理 | **PASS** | 无 `ki-import-precheck-*` 残留 |
+| 6 | 合法输入 --authorize 成功导入，draft/不发布 | **PASS** | `published:false`、`review_status:draft`、`approved_at/by:null`，exit 0 |
+| 7 | validate/test/typecheck/build/privacy-scan 无回归 | **PASS** | 0 errors/1 warning；37 tests/36 pass；typecheck/build exit 0；隐私三层 0 命中 |
+| 8 | 自动检查无法识别人名/系统名等非格式化隐私已说明 | **PASS** | `docs/IMPORT.md` 明确「拦不住人名/公司名/内部项目代号/隐喻式隐私」 |
+
+### 修复前后对照
+
+| 行为 | 修复前（main@1382ec1，PR #25 FAIL） | 修复后（PR #32 HEAD 5792094） |
+| --- | --- | --- |
+| 敏感原稿入库 | `--authorize` 把 `--from` 原文整段拼进 `## 原始记录`，先写盘后校验 | 写盘前预检（V-010+Schema），失败拒绝且不留文件 |
+| 正文内容 | 复制 `--from` 原文（含非结构化段落） | 只从 did/learned/blocked/tomorrow 生成，不复制原文 |
+| 覆盖保护 | 先写后验，已写文件可能被污染 | `--force` 同样先预检，失败不触碰已有文件 |
+
+### 结论
+
+- **P1（PR #25 唯一 FAIL）已在 PR #32 HEAD `5792094` 独立复测通过，8 项全 PASS。**
+- **但 PR #32 尚未合入 main**，因此本报告**不宣布 Wave 3A 最终 PASS**；待 #32 合入 main 后，
+  在 main 上做一次回归确认，方可关闭该 P1 缺陷并宣布 Wave 3A 通过。
+
