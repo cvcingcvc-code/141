@@ -51,25 +51,27 @@
 
 证据链与 `docs/ACCEPTANCE.md` §2 一致：命令输出、PR 链接、用户确认原话，三者缺一不算完成。
 
-## 6. 当前状态
+### 5.1 三种"存在状态"（最容易混淆的一处）
 
-`BLOCKED-D1`：本轮未获得可公开个人素材的授权，`content/` 仍为 6 条 `sample: true` + `published: false`，
-站点没有任何真实条目（Wave 1 `docs/TASKS.md §10` 已记录同一事实）。详见 `pending-confirmation.md`。
+| 状态 | 存放位置 | 谁可见 | 判据 | 谁能推进 |
+| --- | --- | --- | --- | --- |
+| ① **私人原稿** | `F:\141-vault\intake\`（仓库外，不进 git） | 只有本人 | 仓库里没有任何痕迹；可含 L3 细节 | 用户 |
+| ② **可公开但未发布的 Markdown** | `content/**`，`published: false`（或省略）、`sample: false` | **公开仓库的所有人**（已入库＝已公开，不是保密） | `npm run validate` 0 errors 且 `isVisibleEntry === false` | A2 写入（需用户授权入库） |
+| ③ **已批准发布** | `content/**`，`published: true` + `published_at` + `published_by: user`（journal 另需 `review_status: approved`） | 站点 / 搜索 / `content.json` | `isVisibleEntry === true`；构建产物里能查到 | **只有用户或 A1** |
 
-## 7. 与另一套采集资料的关系（待 A1 裁决，未删除）
+一句话：② 是"写进仓库但不上站"，不是"藏起来"；① 才是真正的私密。把 ① 当成 ② 处理，等于公开。
 
-同一 worktree 中出现过第二个 A2 会话的产物，已由该会话自行提交到本分支（commit `c551134`，两条文件）：
-`journal-template.md.template`、`status-t2.2.txt`（已归并到本目录，`content/` 下不再放非条目文件）。
-我没有删除它们（归属未确认前不动别人的产出），差异如下：
+## 6. 当前状态（2026-11-07）
 
-| 维度 | 唯一入口：`src/content/intake/`（本目录） | 已取消：`content/_INTAKE-*` 不再存在（重复会话写入风险已消除） |
-| --- | --- | --- |
-| 位置 | `src/content/` 下，**不在 `content/` 内** | `content/` 根目录 |
-| 防误解析 | 位置天然隔离：content collections 的 loader base 只指向五个子目录，`content/**` 扫描只认 `.md` | 靠扩展名规避（`.txt` / `.md.template`）；一旦有人改名成 `.md` 立即触发 `V-012` |
-| 结构 | 分工：字段清单 / 来源规则 / 待确认清单 / 填写表单 | 合并式：一份模板 + 一份状态报告 |
-| 字段深度 | 45 个字段逐条列出约束与对应 `V-*`/`W-*` 编号 | 类型级字段串 + 关键硬约束摘要 |
-| 自动化守卫 | 7 个测试（清单↔schema 对齐、编号白名单、`BLOCKED-D1` 齐全、发布红线、PII、`content/` 根目录无可解析 `.md`、本目录在 `content/` 之外） | 无测试 |
-| 与 A4 `templates/**` 的边界 | 已声明（A4 做可填空录入文件，本目录做采集与核对） | 未声明 |
-| 结论 | **建议保留这一套**（功能上已覆盖对方：对方模板的"授权块 + 填写项"已并入 `intake-form.md`） | 建议 A1 裁决是否移除；若决定保留对方那套，我按新归属把这 5 份搬过去合并 |
+- `content/` 共 7 条：`sample: true` 6 条（契约回归样本）+ 真实条目 1 条（`KB-ENG-003`，`published: false`）。
+- 已发布条目 **0 条**，`getAllVisible()` 返回空 → 站点、搜索、`content.json` 目前全部是空态（预期，不是缺陷）。
+- `W-002` 仍会报（示例 6/7 > 50%），随真实内容增加自然消失；测试不再依赖它。
+- D1-001 首篇真实内容已入库但**未获发布授权**；下一批素材仍待用户提供。
 
-裁决前两条都留在仓库里不冲突：两套都**不会**被 content loader 解析（见 §7 第 3 行的守卫测试）。
+## 7. 采集资料的收敛状态（2026-11-06 已收敛）
+
+`content/_INTAKE-*` 已在 `eaea05e` 归并进本目录，仓库里只有这一套采集资料，`content/` 下不再放非条目文件。
+我没有删除任何他人产物，只记录事实。
+
+仍待 A1 裁决的残留：`journal-template.md.template` 与 `intake-form.md` 功能重叠，且文件名（journal）与内容（通用采集模板）不符。
+建议删除或改名。它不会被当成内容条目：扩展名不以 `.md` 结尾，且位于 `content/` 之外（两条都有测试守着）。
