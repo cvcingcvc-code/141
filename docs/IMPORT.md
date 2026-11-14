@@ -3,6 +3,14 @@
 > 面向"明天就要用"的场景：你写了一段原始笔记，想让它以**合法但未发布**的形态进入仓库。
 > 本流程只做机械转换与校验，不替你判断内容真假，也不替你批准发布。
 
+> ⚠️ **`--authorize` 是「允许写公开仓库」的技术开关，不等于你已经确认内容可以公开。**
+> 入库正文**只从 `did` / `learned` 等结构化字段生成，不再复制 `--from` 原文**；原稿留在仓库外，
+> 需要保留时只写 `raw_source: vault:<相对路径>` 指针。
+> 写盘前会自动跑 V-010 预检（邮箱 / 手机号 / 身份证 / `sk-`、`ghp_`、`AKIA` 类密钥 / 私钥块），
+> **但自动检查拦不住人名、公司名、内部项目代号、隐喻式隐私、未暴露为固定格式的家庭/健康细节**。
+> 因此 `--authorize` 只能在你**逐条确认事实、完成脱敏、并明确授权本次入库**之后使用；
+> **预检通过 ≠ 内容已脱敏**，最终人审仍不可省。
+
 ## 1. 一条命令
 
 默认把草稿写到**仓库外**（`F:\141-vault\drafts\`），只有加 `--authorize` 才写进公开仓库 `content/`。
@@ -63,7 +71,10 @@ node scripts/import/new-journal.mjs --date 2026-11-08 --from note.md --authorize
 | `published_by` | 不写 | 脚本永不生成人工标识 |
 | `did` / `learned` | 来自 `--from` 或 `--did`/`--learned` | 缺失会**报错退出**，不用占位符冒充内容 |
 
-写完会自动跑一次 `validate-content.mjs`（`--dry-run` 除外）；不通过会退出码 1（文件仍保留，改完再提交）。
+**写盘顺序（P1 修复后）**：`--authorize` 会先构建完整候选 Markdown → 做 V-010 + Schema **预检**（复用
+`scripts/validate-content.mjs` 的 `loadContent`，不复制第二套规则）→ 通过才写盘。预检不通过 → **拒绝写入、
+退出码 1、不产生任何 `content/` 文件，也不修改已有文件**。`--dry-run` 同样执行预检，不落盘。
+未授权草稿（仓库外）保留 `--from` 原文供你自己看；`--authorize` 的正文只由 `did`/`learned` 等结构化字段生成。
 `--from` 文件里若自带 YAML frontmatter 会被剥掉，只解析正文里的结构化区块。
 
 ## 2. 人工路径（必须完整走完）
@@ -71,13 +82,17 @@ node scripts/import/new-journal.mjs --date 2026-11-08 --from note.md --authorize
 ```
 你写原始笔记（仓库外，例如 F:\141-vault\intake\）
   → 运行 new-journal.mjs（默认生成仓库外 draft，未授权不写仓库）
+  → 逐条核对：事实是否真实、有无他人隐私 / 内部系统名 / 凭据，先自行脱敏
   → 补齐 summary / did / learned（脚本已拒绝空壳，无需再填占位符）
+  → 用户明确授权后，加 --authorize：写盘前自动预检（V-010 + Schema），失败即拒绝且不留文件
   → npm run validate            # 必须 0 errors
-  → 用户明确授权后，加 --authorize 生成 content/ 下的待审核稿
   → 提交 PR                      # CI：scope:check / validate / test / typecheck / build
   → 你本人审核 PR 并合并          # 这一步才是"批准"，不是字段
   → 想上站？再由你本人改 published: true + published_at + published_by: user
 ```
+
+> `--authorize` 的前提是：**你已逐条确认事实为真、完成脱敏、并明确授权本次写入公开仓库**。
+> 自动预检只是最后一道格式护栏，不能替你判断"这段内容该不该公开"。
 
 要点：**脚本不 commit、不 PR、不 merge、不 deploy**。仓库历史就是你点过头的证据。
 
@@ -108,6 +123,7 @@ node scripts/import/new-journal.mjs --date 2026-11-08 --from note.md --authorize
 | `--date 必须是真实日期` | 写成 2026-02-30 之类 | 改对日期 |
 | `未授权(--authorize)时草稿必须落在仓库外` | `--out` 指向了仓库内 | 去掉 `--out` 或加 `--authorize` |
 | `--vault-ref 必须是 "vault:<相对路径>"` | 用了绝对路径 / 盘符 / `../` / 其它协议 | 改成 `vault:journal/2026/2026-11-08-raw.md` 形态 |
+| `预检失败：候选内容含敏感信息或不合规` | 候选的 summary/did/learned 里含邮箱/手机号/身份证/密钥等（V-010） | 删掉或脱敏后重跑；**预检失败不会写入任何文件**，也不要改校验器绕过 |
 | 校验退出码 1 | tags 不在词表、正文过短（W-004）等 | 按提示改完重跑 |
 
 ## 6. 与契约的关系
