@@ -119,16 +119,16 @@ test('W-002 在示例占比 ≤ 50% 的夹具上不触发', () => {
 });
 
 /* 发布态：当前快照 + 合法发布路径 ------------------------------------- */
-test('KB-ENG-003 当前为 sample:false / published:false（本次授权范围）', () => {
+test('KB-ENG-003 当前为 sample:false / published:true（已获仓库所有者授权公开上站）', () => {
   const result = validateContent(path.join(REPO_ROOT, 'content'));
   const entry = result.entries.find((e) => e.frontmatter?.id === 'KB-ENG-003');
   assert.ok(entry, 'content/ 中应存在 KB-ENG-003');
   assert.equal(entry.data.sample, false, 'D1-001 是真实内容，sample 必须为 false');
-  assert.equal(entry.data.published, false, '本轮授权仅入库，published 必须为 false');
-  assert.equal(entry.frontmatter.published_at, undefined, '不得由 Agent 填 published_at');
-  assert.equal(entry.frontmatter.published_by, undefined, '不得由 Agent 填 published_by');
-  assert.equal(isVisibleEntry({ data: entry.data }), false);
-  console.log('KB-ENG-003 → sample=false, published=false, 未上站');
+  assert.equal(entry.data.published, true, 'KB-ENG-003 已获授权公开，published 应为 true');
+  assert.equal(entry.data.published_at, '2026-11-18', 'published_at 应记录授权发布日期');
+  assert.equal(entry.data.published_by, 'user', 'published_by 必须为人工标识 user');
+  assert.equal(isVisibleEntry({ data: entry.data }), true, '已授权发布条目必须对站点可见');
+  console.log('KB-ENG-003 → sample=false, published=true, published_by=user, 已上站可见');
 });
 
 test('发布路径不被禁止：已发布条目只要有合法人工证据就应可见', () => {
