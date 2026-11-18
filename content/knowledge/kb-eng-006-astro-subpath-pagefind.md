@@ -5,7 +5,9 @@ title: Astro 5 项目子路径部署与 Pagefind 搜索路径归一化实践
 summary: GitHub Pages 子路径部署下，静态路由、content.json 与 Pagefind 动态加载极易出现丢前缀或双前缀 404；以单一 base 配置派生全链路路径可根治错位。
 created: 2026-11-18
 updated: 2026-11-18
-published: false
+published: true
+published_at: 2026-11-18
+published_by: user
 tags: [architecture, tooling, ci-cd, debugging]
 sample: false
 vault_ref: null

@@ -5,7 +5,9 @@ title: 多 Agent 并行协作中以分支写权限门禁替代口头约定
 summary: 在多角色并行开发同一仓库时，仅靠文档约定与 Git Worktree 无法阻止越界修改；通过分支前缀绑定允许路径表并在 CI 强制拦截，才能实现确定性隔离。
 created: 2026-11-18
 updated: 2026-11-18
-published: false
+published: true
+published_at: 2026-11-18
+published_by: user
 tags: [agent-collaboration, ci-cd, workflow, architecture]
 sample: false
 vault_ref: null

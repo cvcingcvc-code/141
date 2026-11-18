@@ -5,7 +5,9 @@ title: cvcingcvc-code 的个人知识 OS
 summary: GitHub 账号 cvcingcvc-code 的公开知识操作系统：以 Markdown 沉淀知识、项目、复盘与错误经验，坚持来源可追溯、契约校验与隐私隔离。
 created: 2026-11-06
 updated: 2026-11-18
-published: false
+published: true
+published_at: 2026-11-18
+published_by: user
 tags: [knowledge-base, workflow, agent-collaboration]
 sample: false
 vault_ref: null

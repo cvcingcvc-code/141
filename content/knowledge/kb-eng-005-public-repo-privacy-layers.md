@@ -5,7 +5,9 @@ title: 公开 Git 仓库的三层隐私防线与低熵值哈希穷举风险
 summary: 公开仓库中 published:false 只是上站开关而非保密措施；需结合 L1/L2/L3 三层扫描、拒绝低熵值 SHA-256 白名单及 squash 移除可达性来守住边界。
 created: 2026-11-18
 updated: 2026-11-18
-published: false
+published: true
+published_at: 2026-11-18
+published_by: user
 tags: [security, git, ci-cd, testing]
 sample: false
 vault_ref: null

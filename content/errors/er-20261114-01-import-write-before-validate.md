@@ -5,7 +5,9 @@ title: 复盘导入脚本先写盘后校验且整段拼接原稿导致隐私落�
 summary: Wave 3A 复盘导入脚本在 --authorize 模式下先写入公开仓库目录再执行校验，且把源笔记原文拼入正文，经内存预检与结构化裁剪修复。
 created: 2026-11-14
 updated: 2026-11-18
-published: false
+published: true
+published_at: 2026-11-18
+published_by: user
 tags: [security, node, tooling, testing]
 sample: false
 vault_ref: null

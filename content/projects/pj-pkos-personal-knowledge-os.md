@@ -5,7 +5,9 @@ title: Personal Knowledge OS（个人知识操作系统）
 summary: 以五类受控 Markdown 为单一事实源，结合 Zod 契约校验、分支范围门禁、三层隐私扫描与 Pagefind 静态全文搜索构建的个人知识库系统。
 created: 2026-11-06
 updated: 2026-11-18
-published: false
+published: true
+published_at: 2026-11-18
+published_by: user
 tags: [knowledge-base, architecture, ci-cd, security, workflow]
 sample: false
 vault_ref: null
