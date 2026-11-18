@@ -63,28 +63,89 @@ test('采集清单只引用已冻结的校验编号（不得自造 V-/W-）', ()
   console.log(`采集资产 → 引用 ${used.size} 个编号，全部在 C-12 范围内`);
 });
 
-test('待确认清单存在且标注 BLOCKED-D1，编号 D1-1..D1-10 齐全', () => {
+test('待确认清单存在且标注 BLOCKED-D1 或 RESOLVED-D1，编号 D1-1..D1-10 齐全', () => {
   const pending = read('pending-confirmation.md');
-  assert.ok(pending.includes('BLOCKED-D1'), '待确认清单必须显式标注 BLOCKED-D1');
+  assert.ok(/BLOCKED-D1|RESOLVED-D1/.test(pending), '待确认清单必须显式标注 BLOCKED-D1 或 RESOLVED-D1');
   const missing = Array.from({ length: 10 }, (_, i) => `D1-${i + 1}`).filter((id) => !pending.includes(id));
   assert.deepEqual(missing, [], `待确认项缺失：${missing.join(', ')}`);
-  console.log('待确认清单 → BLOCKED-D1 + D1-1..D1-10 齐全');
+  console.log('待确认清单 → 状态标记（BLOCKED-D1/RESOLVED-D1）+ D1-1..D1-10 齐全');
 });
 
-test('Wave 2 §11.6 红线：content/ 中不得存在已发布 / 已批准迹象', () => {
+test('发布白名单守卫：仅已获用户明确批准的 8 条真实条目允许 published:true，其余示例一律未发布/未批准', () => {
   const { entries } = loadContent(path.join(REPO_ROOT, 'content'));
-  assert.ok(entries.length > 0, 'content/ 不应为空（示例条目仍在）');
+  assert.ok(entries.length > 0, 'content/ 不应为空');
 
+  const APPROVED_PUBLISHED_IDS = new Set([
+    'profile',
+    'KB-ENG-003',
+    'KB-ENG-004',
+    'KB-ENG-005',
+    'KB-ENG-006',
+    'PJ-PKOS',
+    'ER-20261114-01',
+    'DJ-2026-11-18',
+  ]);
+  const seenPublished = new Set();
   const offenders = [];
+
   for (const entry of entries) {
     const fm = entry.frontmatter ?? {};
-    if (fm.published === true) offenders.push(`${entry.relToRoot}: published=true`);
-    if (fm.published_by !== undefined && fm.published_by !== null) offenders.push(`${entry.relToRoot}: published_by=${fm.published_by}`);
-    if (fm.approved_by !== undefined && fm.approved_by !== null) offenders.push(`${entry.relToRoot}: approved_by=${fm.approved_by}`);
-    if (fm.review_status === 'approved') offenders.push(`${entry.relToRoot}: review_status=approved`);
+    if (APPROVED_PUBLISHED_IDS.has(fm.id)) {
+      seenPublished.add(fm.id);
+      if (fm.sample !== false) {
+        offenders.push(`${entry.relToRoot}: 已授权真实条目 sample 必须显式为 false（实际 ${fm.sample}）`);
+      }
+      if (fm.published !== true) {
+        offenders.push(`${entry.relToRoot}: 已授权真实条目 published 应为 true（实际 ${fm.published}）`);
+      }
+      if (fm.published_by !== 'user') {
+        offenders.push(`${entry.relToRoot}: 已发布条目 published_by 必须为 user（实际 ${fm.published_by}）`);
+      }
+      if (!Boolean(fm.published_at)) {
+        offenders.push(`${entry.relToRoot}: 已发布条目缺少 published_at`);
+      }
+      if (fm.type === 'journal') {
+        if (fm.review_status !== 'approved') {
+          offenders.push(`${entry.relToRoot}: 已发布 journal 的 review_status 必须为 approved（实际 ${fm.review_status}）`);
+        }
+        if (fm.approved_by !== 'user') {
+          offenders.push(`${entry.relToRoot}: 已发布 journal 的 approved_by 必须为 user（实际 ${fm.approved_by}）`);
+        }
+        if (!Boolean(fm.approved_at)) {
+          offenders.push(`${entry.relToRoot}: 已发布 journal 缺少 approved_at`);
+        }
+      } else {
+        if (fm.approved_by !== undefined && fm.approved_by !== null) {
+          offenders.push(`${entry.relToRoot}: 非 journal 条目不得含 approved_by=${fm.approved_by}`);
+        }
+        if (fm.review_status === 'approved') {
+          offenders.push(`${entry.relToRoot}: 非 journal 条目不得为 review_status=approved`);
+        }
+      }
+    } else {
+      if (fm.published === true) {
+        offenders.push(`${entry.relToRoot}: 未授权发布 id=${fm.id} published=true`);
+      }
+      if (fm.published_by !== undefined && fm.published_by !== null) {
+        offenders.push(`${entry.relToRoot}: 未发布条目不得含 published_by=${fm.published_by}`);
+      }
+      if (fm.approved_by !== undefined && fm.approved_by !== null) {
+        offenders.push(`${entry.relToRoot}: 未发布条目不得含 approved_by=${fm.approved_by}`);
+      }
+      if (fm.review_status === 'approved') {
+        offenders.push(`${entry.relToRoot}: 未发布条目不得为 review_status=approved`);
+      }
+    }
   }
-  assert.deepEqual(offenders, [], `违反 Wave 2 发布红线：\n${offenders.join('\n')}`);
-  console.log(`发布红线 → ${entries.length} 条内容均为未发布/未批准`);
+
+  for (const id of APPROVED_PUBLISHED_IDS) {
+    if (!seenPublished.has(id)) {
+      offenders.push(`缺少已授权白名单条目：${id}`);
+    }
+  }
+
+  assert.deepEqual(offenders, [], `违反授权发布白名单红线：\n${offenders.join('\n')}`);
+  console.log(`发布白名单守卫 → 共 ${entries.length} 条内容，白名单 ${APPROVED_PUBLISHED_IDS.size} 条真实内容已合规发布，其余 ${entries.length - APPROVED_PUBLISHED_IDS.size} 条示例全部未发布/未批准`);
 });
 
 test('采集资产本身不得含 PII 或凭据（它也要进公开仓库）', () => {

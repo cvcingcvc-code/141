@@ -1,27 +1,32 @@
 ---
 id: profile
 type: profile
-title: 示例 Profile（占位，待用户补充）
-summary: 本文件是 T2.1 的示例数据，用于验证 profile 集合的契约与发布链路，不含任何真实个人信息。
+title: cvcingcvc-code 的个人知识 OS
+summary: GitHub 账号 cvcingcvc-code 的公开知识操作系统：以 Markdown 沉淀知识、项目、复盘与错误经验，坚持来源可追溯、契约校验与隐私隔离。
 created: 2026-11-06
-updated: 2026-11-06
-published: false
-tags: [knowledge-base, documentation]
-sample: true
+updated: 2026-11-18
+published: true
+published_at: 2026-11-18
+published_by: user
+tags: [knowledge-base, workflow, agent-collaboration]
+sample: false
 vault_ref: null
 ---
 
-> **这是示例数据（`sample: true`）**，不是真实的个人介绍。
-> 站点的 `/about/` 页在 T3.2 会读取本文件；真实内容由用户在 T2.2 提供后替换。
+## 关于本站与作者
 
-## 这个知识库是什么
+本站由 GitHub 账号 `cvcingcvc-code` 维护，是围绕个人工程实践建立的公开知识操作系统（Personal Knowledge OS）。
 
-一个个人知识 OS：把 `profile / knowledge / projects / journal / errors` 五类 Markdown 内容，
-经 zod 契约校验后编译成静态站点，并提供全文搜索。内容是唯一事实来源，站点只是产物。
+创立本仓库的核心目标，是把日常开发与思考中产生的内容收敛为一套长期可读、可检索、可校验的纯文本资产，覆盖五类结构化条目：
 
-## 字段说明
+- **知识（knowledge）**：经过实践或一手资料核实的判断规则、技术取舍与工程方法，明确区分 `seed`（初步观察）与 `verified`（已核实来源）。
+- **项目（projects）**：真实推进过的工程项目、职责边界、技术栈与可复现验证的交付结果。
+- **复盘（journal）**：按日记录的实际进展、经验总结与下一步计划，严格执行草稿隔离与人工审批后发布。
+- **错误经验（errors）**：按“症状、上下文、根因、修复、预防”五要素沉淀的真实踩坑记录，拒绝只记现象不留根因。
+- **关于（profile）**：站点定位、收录原则与公开边界说明。
 
-- 本条 `published: false`：示例数据不由 Agent 自行发布，必须由用户确认后才能置 `true`。
-- `published: true` 的形态（含 `published_at` / `published_by: user`）只在测试夹具里验证，
-  不写进真实内容目录——避免把模拟审批标成真实个人确认。
-- 正文不含真实姓名、联系方式、家庭或健康细节（P0-1）。
+## 维护原则
+
+1. **内容即唯一事实源**：所有条目均以受控 Markdown 文件存储，静态页面、`content.json` 数据产物与全文搜索索引均由构建流水线自动派生；即使脱离前端框架，纯文本本身依然完整可读。
+2. **契约先行与可追溯性**：五类内容共用同一套 Zod Schema 与 `V-001..V-021` 自动化门禁；高置信度知识必须附带可核查的一手来源，不编造未经验证的结论或指标。
+3. **公开仓库隐私硬隔离**：本仓库为公开 Git 仓库，坚持“发布开关不等于保密开关”原则。未脱敏的私人原稿一律保存在仓库外私密目录，仓库内仅保留脱敏后的结构化内容与人工逐条审批上站记录。

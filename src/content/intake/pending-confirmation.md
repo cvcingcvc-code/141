@@ -1,19 +1,18 @@
-# 待用户确认清单 — 状态：`BLOCKED-D1`
+# 待用户确认清单 — 状态：`RESOLVED-D1`（2026-11-18 仓库所有者审阅批准首批 8 条真实内容公开上站）
 
-> `D1` = 可公开个人素材的授权。本轮**未获得授权**，因此 T2.2 的真实内容采集未开始。
-> 本文件不是内容，不会上站；它只记录"我需要你确认什么、确认后我做什么"。
+> `D1` = 可公开个人素材的授权。**2026-11-18 已由仓库所有者审阅并明确批准首批五类共 8 条真实工程内容公开上站**（5 条 `sample: true` 契约回归示例保留未发布）。
+> 本文件不是内容，不会上站；以下完整保留 `D1-1..D1-10` 确认项记录及当前最新可复查事实，供后续新批次素材录入时继续对照。
 
 ## 1. 当前事实（可复查，不作修饰）
 
 | 项 | 事实 | 复查方式 |
 | --- | --- | --- |
-| 内容条目 | `content/` 共 7 条（6 条 `sample: true` + 1 条未发布真实知识 `KB-ENG-003`，全部未上站：profile 1 / knowledge 3 / projects 1 / journal 1（draft）/ errors 1） | `npm run validate`、`git ls-tree -r origin/main -- content` |
-| 站点可读条目 | **0 条**：`getAllVisible()` 过滤后为空 | `npm test` 中「真实样本全部未发布」用例 |
-| 校验状态 | `0 errors, 1 warnings`（`W-002`：示例 6/7 > 50%） | `npm run validate` |
-| T2.2 DoD | **未达成**：五类各 ≥1 真实条目、`W-002` 消失，都依赖 D1 | `docs/TASKS.md §3 T2.2` |
+| 内容条目 | `content/` 共 13 条：8 条真实内容（`sample: false` 且已获批 `published: true`：profile 1 / knowledge 4 / projects 1 / journal 1（approved）/ errors 1）+ 5 条契约回归示例（`sample: true` 且未发布） | `npm run validate`、`npm test` |
+| 站点可读条目 | **8 条**：`getAllVisible()` 与 `dist/data/content.json` 精准收录 8 条真实内容，5 条示例 0 泄漏 | `npm run build` 检查 `dist/data/content.json` |
+| 校验状态 | `0 errors, 0 warnings`（示例占比 5/13 = 38.5% ≤ 50%，`W-002` 已消除） | `npm run validate` |
+| T2.2 DoD | **已达成**：五类各 ≥1 条真实已核实/已批准条目，非 `seed` 知识 3 条，`W-002` 消失 | `docs/TASKS.md §3 T2.2`、`PR #38` |
 
-不达成的原因不是工具链问题，而是**没有任何一条内容是我有资格替你写的**：
-我不知道你的经历、结论、错误与判断，编造出来的东西即使结构合规，也会污染这个库的可信度（AGENTS §1 第 6 条）。
+以下保留原 `D1` 素材采集要求与确认项清单，作为后续新增个人条目时的长期核对基线（AGENTS §1 第 6 条）：
 
 ## 2. 我需要你提供的最小素材（每类只要一点点就够起步）
 

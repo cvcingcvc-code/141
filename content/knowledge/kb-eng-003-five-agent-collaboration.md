@@ -4,8 +4,10 @@ type: knowledge
 title: 我用 5 个 AI Agent 开发个人知识库，终于明白了什么叫真正的协作
 summary: 用 5 个 AI Agent 并行开发个人知识库的实践复盘：多会话抢写、CI 假绿、搜索接通三个坑，指向同一条结论——协作边界比并行数量更关键。
 created: 2026-11-06
-updated: 2026-11-06
-published: false
+updated: 2026-11-18
+published: true
+published_at: 2026-11-18
+published_by: user
 tags: [agent-collaboration, workflow, ci-cd]
 sample: false
 vault_ref: null

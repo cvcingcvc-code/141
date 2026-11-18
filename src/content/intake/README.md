@@ -27,7 +27,7 @@
 | --- | --- |
 | `field-checklist.md` | 五类内容的字段级采集清单（必填/可选/约束/对应校验编号），逐条对应 `CONTRACTS.md` C-3..C-8 |
 | `source-verification.md` | 来源核对：`kind` 怎么选、`locator` 要写到什么粒度、`status`/`confidence` 怎么判 |
-| `pending-confirmation.md` | **待用户确认清单**，当前状态 `BLOCKED-D1`（未获得可公开素材的授权） |
+| `pending-confirmation.md` | **待用户确认清单**，当前状态 `RESOLVED-D1`（2026-11-18 仓库所有者已审阅批准首批五类共 8 条真实内容公开上站） |
 | `intake-form.md` | **可直接复制到仓库外填写的素材表单**（授权块 + 五类填写块 + 来源核对 + 标签/关联），闭环采集 |
 | `status-t2.2.txt` | 本轮 T2.2 的实际核对结果与 DoD 差距快照（**状态**，不是清单；要问什么看 `pending-confirmation.md`） |
 | `journal-template.md.template` | 复盘/错误条目的录入模板（扩展名刻意不以 `.md` 结尾，避免被当成内容条目） |
@@ -63,12 +63,12 @@
 
 一句话：② 是"写进仓库但不上站"，不是"藏起来"；① 才是真正的私密。把 ① 当成 ② 处理，等于公开。
 
-## 6. 当前状态（2026-11-07）
+## 6. 当前状态（2026-11-18）
 
-- `content/` 共 7 条：`sample: true` 6 条（契约回归样本）+ 真实条目 1 条（`KB-ENG-003`，`published: false`）。
-- 已发布条目 **0 条**，`getAllVisible()` 返回空 → 站点、搜索、`content.json` 目前全部是空态（预期，不是缺陷）。
-- `W-002` 仍会报（示例 6/7 > 50%），随真实内容增加自然消失；测试不再依赖它。
-- D1-001 首篇真实内容已入库但**未获发布授权**；下一批素材仍待用户提供。
+- `content/` 共 13 条：真实条目 8 条（`profile`、`KB-ENG-003`..`KB-ENG-006`、`PJ-PKOS`、`ER-20261114-01`、`DJ-2026-11-18`，全部 `sample: false` 且已获仓库所有者明确批准公开上站）+ 契约回归示例 5 条（`sample: true`，全部保持未发布）。
+- 已发布可见条目 **8 条**（knowledge 4 / projects 1 / journal 1 / errors 1 / profile 1），`dist/data/content.json` 与静态详情路由全部就绪，5 条示例条目 0 泄漏。
+- `npm run validate` 为 `0 errors, 0 warnings`（示例占比 5/13 = 38.5% ≤ 50%，`W-002` 告警已自然消除）。
+- 后续新增个人素材仍严格遵循 §4 红线与 §5 流程（默认 `published: false` / `draft`，经用户审阅确认后再写入人工审批字段）。
 
 ## 7. 采集资料的收敛状态（2026-11-06 已收敛）
 
