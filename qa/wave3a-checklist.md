@@ -1,10 +1,10 @@
 # Wave 3A 测试清单 — 导入与阅读独立 QA
 
 > 归属：A5。验收对象：T4.3（复盘导入流程）+ T3.3（可读性）。
-> 最终验收基线：`main@529fe47`（T4.3 #26、T3.3 #27、#29 长链接、#31 文档警告、#32 P1 隐私修复均已合入）。
+> 最终验收基线：`main@c6fec077`（T4.3 #26、T3.3 #27、#29 长链接、#31 文档警告、#32 P1 隐私修复、#33 `INC-002` 裁决均已合入）。
 > 判定四类：PASS / FAIL / BLOCKED / NOT TESTED。纯合成测试数据验收，不编造用户实际经历。
 >
-> 最终结果：**9 项全部通过（8 PASS + 1 项修复后 CLOSED）**；详见 `docs/qa/ACCEPTANCE-RUN-WAVE3A-2026-11-07.md`。
+> 最终结果：Wave 3A 功能验收 **9 项通过（8 PASS + 1 CLOSED）**；在 `qa/a5-wave3a` 分支上 `scope:check / validate / test / typecheck / build` 均为 `exit 0`，`privacy-scan.mjs` 因含历史提交 `f65cd8b`、`332568a` 实测为 **`exit 1`（L1=0, L2=3, L3=0）**，依 `docs/incidents/INC-002.md` 裁决在 PR #25 仅按 squash 合入 `main`（移除 `main` 可达性，不宣称 GitHub 历史对象已消失）后复测 `exit 0` 关闭；详见 `docs/qa/ACCEPTANCE-RUN-WAVE3A-2026-11-07.md`。
 
 ## 0. 验收标准（来源）
 
@@ -44,7 +44,7 @@
 - 判定：L3 原文只以 `vault_ref` 指针存在；隐私三层扫描；`F:\141-vault\` 不在 git 内。
 - **PASS（PR #32 修复后 CLOSED）**：写盘前预检（复用 loadContent 做 V-010+Schema）+ `--authorize`
   正文只从结构化字段生成、不复制 `--from` 原文。
-  > 注：隐私扫描另有 3 项历史合成测试值待处置（见报告 §10.2 附注），与真实风险无关，但门禁按规则仍标注「待处置」。
+  > 注：在包含历史提交 `f65cd8b`、`332568a` 的 `qa/a5-wave3a` 分支上，`privacy-scan.mjs` 实测为 **L1=0 / L2=3（3 项历史合成测试值）/ L3=0，`exit 1`**。依 `docs/incidents/INC-002.md` 裁决：不批准值级白名单、不修改扫描规则、PR #25 仅允许 squash 合并；待 squash 合入 `main`（移除 `main` 可达性，不宣称 GitHub 历史对象已消失）后在新 `main` 上重跑 `privacy-scan` `exit 0` 关闭最终隐私门禁。
 
 ## 6. draft / published:false 不进 HTML / content.json / Pagefind
 
@@ -60,8 +60,8 @@
 
 ## 8. validate / test / typecheck / build / privacy-scan 真实退出码
 
-- **PASS**（真实退出码）：validate 0 errors/1 warning、test 37/36 pass、typecheck/build exit 0、
-  privacy-scan 三层 0 真实风险命中（另有 3 项历史合成测试值待处置，见 §5 注）。
+- **基线校验与构建 PASS（均为 `exit 0`）**：在 `qa/a5-wave3a`（已 merge `main@c6fec077`）上，`scope:check` `exit 0`、`validate` `exit 0`（0 errors / 1 warning）、`test` `exit 0`（37 tests / 36 pass / 1 skipped）、`typecheck` `exit 0`、`build` `exit 0`。
+- **本分支 `privacy-scan` 实测 `exit 1`（对齐 `INC-002`）**：`node qa/scripts/privacy-scan.mjs` 实测为 **L1=0, L2=3（`f65cd8b`、`332568a` 历史合成测试值）, L3=0，退出码 `exit 1`**；依 `docs/incidents/INC-002.md` 不豁免、不改规则，在 PR #25 仅按 squash 合入 `main` 后复测 `exit 0` 方可关闭最终隐私门禁。
 
 ## 9. 每个 FAIL 给出最小复现 + 明确归属
 

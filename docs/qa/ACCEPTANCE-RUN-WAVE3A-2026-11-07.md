@@ -1,20 +1,19 @@
 # 验收报告 — Wave 3A 导入与阅读最终独立验收（2026-11-14）
 
 > 角色：A5 独立 QA（只读，未修改任何 A3/A4 业务代码）。
-> 最终验收基线：`main@529fe47`（T4.3 导入 #26、T3.3 可读性 #27、#29 长链接修复、#31 文档警告、#32 P1 隐私修复均已合并）。
-> 分支：`qa/a5-wave3a`（HEAD `875ad1d`，merge `origin/main`，工作树干净，未 force push）。
+> 最终验收基线：`main@c6fec077`（T4.3 导入 #26、T3.3 可读性 #27、#29 长链接修复、#31 文档警告、#32 P1 隐私修复、#33 `docs/incidents/INC-002.md` 裁决均已合入）。
+> 分支：`qa/a5-wave3a`（已普通 merge `origin/main@c6fec077`，工作树干净，未 force push）。
 > 契约版本：`CONTRACTS.md` v1.0.0-rc4。
 > 判定四类：PASS / FAIL / BLOCKED / NOT TESTED。**纯合成测试数据验收，不编造用户实际经历。**
 >
-> **最终状态（2026-11-14 晚）**：§5 的唯一 FAIL（P1）已由 PR #32 修复并合入 main（`529fe47`），
-> 本轮在 main@529fe47 上完成合并态回归（§10.2），P1 状态 **CLOSED**。
-> 隐私门禁：真实风险命中 0，另有 **3 项历史合成测试值待处置**（见 §10.2 附注），由 A1 处置后方可关闭。
+> **最终状态（对齐 `main@c6fec077` / `INC-002`）**：§5 的唯一 FAIL（P1）已由 PR #32 修复并合入 `main`（`529fe47`），合并态回归通过（§10.2），P1 状态 **CLOSED**；Wave 3A 功能验收 **9 项通过（8 PASS + 1 CLOSED）**。
+> **隐私门禁（对齐 `docs/incidents/INC-002.md` 已生效裁决）**：在包含历史提交 `f65cd8b`、`332568a` 的 `qa/a5-wave3a` 分支上，`privacy-scan.mjs` 实测为 **L1=0 / L2=3（3 项历史合成测试值）/ L3=0，退出码 `exit 1`**。依 `INC-002` 裁决：**不批准值级白名单、不修改扫描规则、PR #25 仅允许 squash 合并**；`main` 的最终隐私门禁须在 PR #25 按 squash 合并入 `main`（移除 `main` 可达性，不宣称 GitHub 历史对象已消失）后，在新 `main` 上重跑 `privacy-scan` 取得 `exit 0` 方可关闭。
 
 ## 1. 验收结果总表
 
 | # | 验收项 | 判定 | 证据 |
 | --- | --- | --- | --- |
-| 1 | 基线命令 + 隐私扫描（真实退出码） | **PASS** | §3 |
+| 1 | 基线命令 + 隐私扫描（真实退出码） | **基线命令 PASS（exit 0）；本分支 privacy-scan exit 1（L1=0/L2=3/L3=0，按 INC-002 squash 合入 main 后复测关闭）** | §3 / §10.2 |
 | 2 | 合法输入生成可校验草稿 | **PASS** | §4 |
 | 3 | 缺失 did/learned 不自动编造 | **PASS** | §4 |
 | 4 | 非法日期/重复日期/覆盖保护/路径穿越/非法 vault-ref 阻止 | **PASS** | §4 |
@@ -25,7 +24,7 @@
 | 9 | FAIL 最小复现 + 明确归属 | 已给出 | §5 |
 
 > 合计（修复前）：**8 PASS + 1 FAIL**；0 BLOCKED；0 NOT TESTED。
-> 最终（PR #32 合入 main@529fe47 后）：**9 项全部通过，P1 CLOSED**；0 FAIL；0 BLOCKED；0 NOT TESTED。
+> 最终（对齐 `main@c6fec077` / `INC-002`）：**Wave 3A 功能验收 9 项通过（8 PASS + 1 CLOSED）**；0 FAIL；0 BLOCKED；0 NOT TESTED。`main` 的最终隐私门禁须在 PR #25 按 squash 合入 `main` 后重跑 `privacy-scan` `exit 0` 方可关闭。
 
 ## 2. 上轮 BLOCKED 项已解锁
 
@@ -37,12 +36,15 @@
 ## 3. 基线命令（#1，真实退出码）
 
 ```
-npm run validate  → 0 errors, 1 warning（W-002 样本 6/7）   exit 0
-npm test          → 37 tests / 36 pass / 1 skipped           exit 0
-npm run typecheck → exit 0
-npm run build     → Pagefind 索引 8 页                        exit 0
-privacy-scan.mjs  → L1 0 / L2 0 / L3 0 真实命中               exit 0
+npm run scope:check → 0 越界                                  exit 0
+npm run validate    → 0 errors, 1 warning（W-002 样本 6/7）   exit 0
+npm test            → 37 tests / 36 pass / 1 skipped          exit 0
+npm run typecheck   → exit 0
+npm run build       → Pagefind 索引 8 页                       exit 0
+privacy-scan.mjs    → L1 0 / L2 3（历史合成测试值）/ L3 0     exit 1
 ```
+
+> 注：在本报告首次提交前的工作树上 L2 曾为 0；自包含明文合成测试值的两个历史提交（`f65cd8b`、`332568a`）进入 `qa/a5-wave3a` 分支后，本分支上 `privacy-scan.mjs` 实测如实为 **L1=0 / L2=3 / L3=0，`exit 1`**（详见 §10.2 与 `docs/incidents/INC-002.md`）。
 
 ## 4. 导入流程（#2 #3 #4 #6，实测输出）
 
@@ -126,7 +128,7 @@ Pagefind 片段 grep 标题/正文关键词 0 命中。
 
 - P1（--authorize 泄漏）已由 PR #32 修复并 CLOSED。
 - 表格 display:block 窄屏堆叠是否调整，由 A3 决策，不阻断本轮。
-- **隐私扫描 3 项历史合成测试值待处置**：见 §10.2 附注，需 A1 建立事故记录 + 用户批准后，方可值级白名单化（A5 不得擅自豁免）。
+- **隐私扫描 3 项历史合成测试值（已按 `docs/incidents/INC-002.md` 裁决）**：不批准值级白名单、不修改扫描规则、PR #25 仅允许 squash 合并；在本分支 `qa/a5-wave3a` 上 `privacy-scan.mjs` 保持 **L1=0 / L2=3 / L3=0，`exit 1`**，待 PR #25 按 squash 合入 `main`（移除 `main` 可达性，不宣称 GitHub 历史对象已消失）后，在新 `main` 上重跑 `privacy-scan` `exit 0` 方可关闭最终隐私门禁。
 
 ## 10. P1 修复独立复测（PR #32 HEAD `5792094`）
 
@@ -146,7 +148,7 @@ Pagefind 片段 grep 标题/正文关键词 0 命中。
 | 4 | --force 覆盖预检失败后哈希不变 | **PASS** | before/after SHA-256 均为 `eb7ac573…ef31` |
 | 5 | --dry-run 不写文件 + 临时目录清理 | **PASS** | 无 `ki-import-precheck-*` 残留 |
 | 6 | 合法输入 --authorize 成功导入，draft/不发布 | **PASS** | `published:false`、`review_status:draft`、`approved_at/by:null`，exit 0 |
-| 7 | validate/test/typecheck/build/privacy-scan 无回归 | **PASS** | 0 errors/1 warning；37 tests/36 pass；typecheck/build exit 0；隐私三层 0 命中 |
+| 7 | validate/test/typecheck/build/privacy-scan 无回归 | **PASS** | 0 errors/1 warning；37 tests/36 pass；typecheck/build exit 0；当时在不含 QA 分支历史的 PR #32 detached HEAD `5792094` 上测得隐私三层 0 命中（exit 0；而在含 `f65cd8b`/`332568a` 的 `qa/a5-wave3a` 分支上实测为 L1=0/L2=3/L3=0，exit 1） |
 | 8 | 自动检查无法识别人名/系统名等非格式化隐私已说明 | **PASS** | `docs/IMPORT.md` 明确「拦不住人名/公司名/内部项目代号/隐喻式隐私」 |
 
 ### 修复前后对照
@@ -162,10 +164,9 @@ Pagefind 片段 grep 标题/正文关键词 0 命中。
 - **P1（PR #25 唯一 FAIL）已在 PR #32 HEAD `5792094` 独立复测通过，8 项全 PASS。**
 - 当时 PR #32 尚未合入 main，故 §10.1 不宣布最终 PASS；该结论已被 §10.2（合并态回归）取代。
 
-### 10.2 PR #32 合入 main 后的合并态回归（main@529fe47）
+### 10.2 合并态回归与 INC-002 对齐验证（main@529fe47 → main@c6fec077）
 
-PR #32 已于 2026-11-14 21:15 合入 main（`529fe47`）。本轮在 `qa/a5-wave3a` merge `origin/main@529fe47`
-后的工作树上重跑全部关键项，记录真实退出码（不复制上次 PASS）：
+PR #32 已于 2026-11-14 21:15 合入 `main`（`529fe47`），PR #33（`docs/incidents/INC-002.md` 权威裁决）已合入 `main@c6fec077`。本轮在 `qa/a5-wave3a` 普通 merge `origin/main@c6fec077` 后的工作树上重跑全部关键项，记录真实退出码（不复制上次 PASS）：
 
 | 复测项 | 实测 | 退出码 |
 | --- | --- | --- |
@@ -174,35 +175,33 @@ PR #32 已于 2026-11-14 21:15 合入 main（`529fe47`）。本轮在 `qa/a5-wav
 | --force 覆盖失败哈希不变 | `eb7ac573…ef31` == `eb7ac573…ef31` | 1（拒绝覆盖） |
 | dry-run 不写文件 + 临时目录清理 | 无 `ki-import-precheck-*` 残留 | 0 |
 | 合法导入 draft/不发布 | `published:false`、`review_status:draft`、`approved_at/by:null` | 0 |
+| scope:check | 0 越界 | 0 |
 | validate | 0 errors, 1 warning | 0 |
 | test | 37 tests / 36 pass / 1 skipped | 0 |
-| typecheck | Generated 1.03s | 0 |
-| build | 索引完成 | 0 |
-| privacy-scan | 真实风险命中 0（另有 3 项历史合成测试值待处置，见下方附注） | 1（因 3 项历史值待处置） |
+| typecheck | Generated 1.16s | 0 |
+| build | Pagefind 索引 8 页 | 0 |
+| privacy-scan | L1=0 / L2=3（3 项历史合成测试值）/ L3=0（见下方 `INC-002` 附注） | 1（本分支含 `f65cd8b`/`332568a` 历史） |
 | KB-ENG-003 隔离 | content.json items=0、无详情页、Pagefind 0 命中 | — |
 
-> **隐私扫描 3 项历史合成测试值待处置（如实保留，不掩盖告警）**：
-> 工作树（L1）与构建产物（L3）均为 **0 真实风险命中**；但 git 历史（L2）有 **3 处命中**，
-> 均来自 QA 分支自身上一轮报告提交里记录的**合成测试值**（复现步骤中的假身份证号、假手机号），
-> 非真实 PII、非业务代码、未进 main 的 `content/`。三处脱敏来源与对应提交如下：
+> **隐私扫描 L2=3 命中说明（已按 `docs/incidents/INC-002.md` 权威裁决处置）**：
+> 在包含 `f65cd8b`、`332568a` 两个历史提交的 `qa/a5-wave3a` 分支上，`privacy-scan.mjs` 实测为 **L1=0 / L2=3 / L3=0，退出码 `exit 1`**。
+> 3 处 L2 命中均来自本 QA 分支早期报告提交里误写明文的**合成测试值**（非真实 PII、非业务代码、从未进入 `main`）：
 >
-> | # | 脱敏值 | 来源 | 对应提交 | 真实影响 |
+> | # | 掩码 | 来源 | 对应提交 | 性质 |
 > | --- | --- | --- | --- | --- |
-> | 1 | 身份证号 `110101…1234` | §5 FAIL 复现步骤（合成假值） | `f65cd8b` | 假身份证号，非真实 PII |
-> | 2 | 手机号 `138…8000` | §5 FAIL 复现步骤（合成假值） | `f65cd8b` | 假手机号，非真实 PII |
-> | 3 | 手机号 `139…5678` | §10 复测表 did 用例（合成假值） | `332568a` | 假手机号，非真实 PII |
+> | 1 | 身份证号 `110101********1234` | §5 FAIL 复现步骤（合成测试值） | `f65cd8b` | 自造测试证件号，非真实 PII |
+> | 2 | 手机号 `138****8000` | §5 FAIL 复现步骤（合成测试值） | `f65cd8b` | 自造测试号码，非真实 PII |
+> | 3 | 手机号 `139****5678` | §10.1 复测表 did 用例（合成测试值） | `332568a` | 自造测试号码，非真实 PII |
 >
-> 处置规则（遵守 `privacy-scan.mjs` 白名单约定）：新增值级白名单必须「事故记录 + 用户明确批准 +
-> 精确值匹配」；**合成测试数据不自动豁免**。本轮已撤回曾擅自加入的 3 个白名单条目，如实保留
-> 「3 项历史合成测试数据待处置」状态，由 A1 在 `docs/incidents/` 建立可追溯处置记录并经用户批准后，
-> 方可值级白名单化；不扩大为文件级/目录级/正则前缀豁免。
+> **权威裁决（见 `docs/incidents/INC-002.md`，`main@c6fec077` 已生效）**：
+> 1. **不批准值级白名单**：三项合成值不加入 `KNOWN_VALUE_SHA256`，永久保留命中状态（本文件亦不记录其完整值或 SHA-256）；
+> 2. **不修改扫描规则**：不加例外、不放宽正则、不调阈值、不关闭门禁；
+> 3. **PR #25 仅允许 squash 合并**：严禁 merge commit / rebase merge，以移除 `f65cd8b`、`332568a` 对 `main` 的可达性（合并后删除远端分支，**但不宣称 GitHub 上的历史对象已消失**）。
 
-### 最终结论（以本轮实测为准）
+### 最终结论（以本轮实测与 INC-002 裁决为准）
 
-- **P1（--authorize 未脱敏原稿入库）已由 PR #32 修复、合入 main@529fe47，并在合并态回归通过，状态 CLOSED。**
-- **Wave 3A 功能验收：9 项全部通过（8 PASS + 1 项修复后 CLOSED），0 FAIL，0 BLOCKED，0 NOT TESTED。**
-- **隐私门禁状态（如实区分）**：真实风险命中 **0**；另有 **3 项历史合成测试值待处置**（非真实 PII，
-  来自 QA 分支历史报告提交，见 §10.2 附注）。因这 3 项未经 A1 事故记录 + 用户批准，**隐私门禁不宣布最终通过**，
-  `privacy-scan` 当前 exit 1 属实反映待处置状态，A5 不通过改扫描器掩盖告警。
-- 待 A1 处置 3 项历史值后，隐私门禁方可关闭。
+- **P1（--authorize 未脱敏原稿入库）已由 PR #32 修复、合入 `main@529fe47`，并在合并态回归通过，状态 CLOSED。**
+- **Wave 3A 功能验收：9 项通过（8 PASS + 1 CLOSED），0 FAIL，0 BLOCKED，0 NOT TESTED。**
+- **本分支隐私扫描实测**：在包含历史提交 `f65cd8b`、`332568a` 的 `qa/a5-wave3a` 分支上，`privacy-scan.mjs` 实测为 **L1=0 / L2=3（3 项历史合成测试值）/ L3=0，退出码 `exit 1`**。
+- **最终隐私门禁关闭条件（对齐 `INC-002`）**：不批准值级白名单、不修改扫描规则、PR #25 仅允许 squash 合并；`main` 的最终隐私门禁须在 PR #25 按 squash 合并入 `main`（移除 `main` 可达性，不宣称 GitHub 历史对象已消失）后，在新 `main` 上重跑 `privacy-scan` `exit 0` 方可关闭。
 
