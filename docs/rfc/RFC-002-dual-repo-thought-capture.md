@@ -1,6 +1,6 @@
 # RFC-002 双库隔离的在线思考捕获与受控同步方案（v0.2）
 
-- 状态：proposed
+- 状态：accepted
 - 提出人：A1（总控 / 架构，按仓库所有者需求立项）
 - 日期：2026-11-18
 - 目标契约版本：1.0.1 → 1.1.0（向后兼容新增可选工具路由 `/capture/` 与双库同步协议）
@@ -89,7 +89,7 @@ personal-knowledge-vault/          # GitHub Private 仓库
 | `docs/CONTRACTS.md` | 升版本 `1.0.1 → 1.1.0`；`C-9` 路由契约由 12 条扩充为 13 条（新增 `/capture/` 静态工具页，标注 `noindex` 且不纳入 Pagefind 正文索引以免干扰知识检索）；`C-18` 增补私有远端库 `personal-knowledge-vault` 作为 `vault_ref` 的云端对应源说明 | A1 |
 | `src/content/schema.ts` | 五类内容字段与校验规则**零破坏性变更**；`STATIC_ROUTES` 常量同步登记 `/capture/` | A2 |
 | `scripts/validate-content.mjs` | 无需新增错误码，自动继承 `STATIC_ROUTES` 更新 | A2 |
-| `src/pages/capture.astro`、`src/lib/capture.ts` | 新增纯前端在线思考捕获工作台（含本地令牌管理、双模式编辑器、前端 V-010 隐私预检、GitHub Contents API 写入封装）及 `.sources__ref` 长链接折行 P2 样式微调 | A3（需先向 A1 登记 `src/lib/capture.ts` 归属 A3） |
+| `src/pages/capture.astro`、`src/components/Footer.astro`、`src/styles/global.css` | 新增纯前端在线思考捕获工作台（含本地令牌管理、目标仓库 `private: true` 强制防呆校验、双模式编辑器、前端 V-010 隐私预检、GitHub Contents API 写入与同步触发）、页脚低调「捕获」入口及 `.sources__ref` 长链接折行 P2 样式修复 | A3（严格落在既有 `src/pages/**`、`src/components/**`、`src/styles/**` 写权限内，无需改动 `AGENTS.md §3`） |
 | 私有库初始化资产与 `docs/IMPORT.md` | 提供私有库一键初始化脚本/模板（`inbox/`、`staged/`、`promote-to-public.yml`、Issue Form）并更新导入文档 | A4 |
 | `qa/scripts/link-check.mjs`、`qa/checklist.md` | 固定路由检查由 8 条更新为 9 条（含 `/capture/`），新增前端 V-010 拦截与令牌零泄漏检查用例 | A5 |
 | `content/**`、`dist/data/content.json` | 存量 13 条内容与 `content.json` 数据结构**完全不变** | — |
@@ -109,12 +109,12 @@ personal-knowledge-vault/          # GitHub Private 仓库
 1. 若需回滚公开站在线输入页：直接 `git revert` `/capture/` 相关 PR 并重新部署，原有 12 条知识站路由与全部已发布内容不受任何影响。
 2. 若需停用跨仓同步：在 GitHub 撤销对应的单仓 Fine-Grained Token 或禁用私有库 `promote-to-public.yml` Action 即可瞬时切断写入通道，已在私有库沉淀的思考 Markdown 原文完好保留。
 
-## 6. 裁决（待仓库所有者确认）
+## 6. 裁决（仓库所有者已批准）
 
-- 结论：待定（proposed）
-- 待所有者确认事项：
-  1. 私有仓库名称是否定为 `cvcingcvc-code/personal-knowledge-vault`？
-  2. 在线输入页路径是否采用站内子路由 `https://cvcingcvc-code.github.io/personal-knowledge-os/capture/`（顶部导航可选择放入口或仅本人书签访问）？
-  3. 确认批准本 RFC 后，即按阶段 1 → 阶段 3 分派 A1–A5 落地实现。
+- 结论：accepted
+- 所有者确认事项（2026-11-18）：
+  1. 批准本 RFC 进入 v0.2 正式实施；
+  2. 授权创建 GitHub 私有仓库 `cvcingcvc-code/personal-knowledge-vault`（Private）并初始化 `inbox/`、`staged/` 目录与 `promote-to-public.yml` 受控同步工作流；
+  3. 在站点页脚增加低调「捕获」入口并支持书签直接访问 `/personal-knowledge-os/capture/`，保持顶部主导航面向访客清爽。
 - 裁决人：仓库所有者
-- 日期：待填写
+- 日期：2026-11-18
