@@ -1,0 +1,1786 @@
+---
+/**
+ * 在线思考捕获工作台 — /capture/（C-9 #13 / RFC-002）
+ *
+ * 安全不变量：
+ * 1. 纯静态客户端工具页，源码与构建产物不含任何凭据或私钥；
+ * 2. noindex + data-pagefind-ignore="all"，不进入搜索引擎与站内 Pagefind 索引；
+ * 3. 写入前强制校验目标仓库 GitHub API 返回 `private === true`，拒绝向公开库直接写入；
+ * 4. 结构化沉淀模式内置同源 V-010 敏感信息实时雷达，命中即阻断放入 staged/。
+ */
+import Base from "../layouts/Base.astro";
+---
+
+<Base
+  title="思考捕获工作台"
+  description="双库物理隔离的在线思考捕获与结构化知识沉淀工具台。"
+  noindex={true}
+  pagefindIgnore={true}
+>
+  <header class="page-head">
+    <h1>思考捕获工作台</h1>
+    <p class="page-head__desc">
+      双库物理隔离 · 零服务端凭据 · 日常思考直存私有仓库，脱敏条目经受控 PR 同步公开知识站。
+    </p>
+  </header>
+
+  <!-- 顶部双库隔离机制说明条 + 手机免配置快捷入口 -->
+  <section class="wb-banner" aria-label="双库物理隔离机制说明">
+    <div class="wb-banner__grid">
+      <div class="wb-banner__item">
+        <strong>日常思考 → 私有库 <code>inbox/</code>（100% 私密）</strong>
+        <p>
+          随手记录的闪念、阅读笔记与原始复盘（L3 私密级）仅写入私有仓库，永不触碰公开仓库 Git 历史。
+        </p>
+      </div>
+      <div class="wb-banner__item">
+        <strong>脱敏草稿 → 私有库 <code>staged/</code> → 公开站 PR</strong>
+        <p>
+          整理成熟的内容经浏览器端 V-010 敏感预检后存入 <code>staged/</code>，触发同步工作流向公开站发起待审草稿 PR。
+        </p>
+      </div>
+    </div>
+    <div class="wb-banner__footer">
+      <a
+        class="wb-btn wb-btn--secondary"
+        href="https://github.com/cvcingcvc-code/personal-knowledge-vault/issues/new?template=thought.yml"
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        手机免配置快捷入口（私有库 Issue 表单）↗
+      </a>
+      <span class="wb-hint">
+        已在手机登录 GitHub 时，无需在本页配置浏览器令牌即可随手提交思考。
+      </span>
+    </div>
+  </section>
+
+  <!-- 可折叠：私有库连接设置 -->
+  <details class="wb-card wb-settings" id="wb-settings" open>
+    <summary class="wb-settings__summary">
+      <span class="wb-settings__title">私有库连接设置</span>
+      <span class="badge" id="conn-badge">未配置本机令牌</span>
+    </summary>
+
+    <div class="wb-settings__body">
+      <div class="wb-grid wb-grid--2">
+        <div class="wb-field">
+          <label class="wb-label" for="cfg-repo">目标私有仓库（owner/repo）</label>
+          <input
+            id="cfg-repo"
+            class="wb-input"
+            type="text"
+            value="cvcingcvc-code/personal-knowledge-vault"
+            autocomplete="off"
+            spellcheck="false"
+          />
+        </div>
+        <div class="wb-field">
+          <label class="wb-label" for="cfg-branch">目标分支</label>
+          <input
+            id="cfg-branch"
+            class="wb-input"
+            type="text"
+            value="main"
+            autocomplete="off"
+            spellcheck="false"
+          />
+        </div>
+      </div>
+
+      <div class="wb-field">
+        <label class="wb-label" for="cfg-token">GitHub Fine-Grained Token（仅存本机浏览器）</label>
+        <input
+          id="cfg-token"
+          class="wb-input"
+          type="password"
+          autocomplete="off"
+          spellcheck="false"
+          placeholder="粘贴仅授权私有库读写的 Fine-grained Token"
+        />
+        <p class="wb-hint">
+          最小权限原则：请仅授权单个私有仓库 <code>Contents: Read and write</code>（如需网页一键触发同步工作流，另勾选 <code>Actions: Read and write</code>），切勿授权公开仓库写权限。令牌仅保存在本机 <code>localStorage</code>，直连 <code>api.github.com</code>。
+        </p>
+      </div>
+
+      <div class="wb-actions">
+        <button type="button" class="wb-btn wb-btn--primary" id="btn-verify-conn">
+          保存并验证连接
+        </button>
+        <button type="button" class="wb-btn wb-btn--ghost" id="btn-clear-conn">
+          清除本机令牌
+        </button>
+      </div>
+
+      <div class="wb-alert" id="conn-status" role="status" aria-live="polite" hidden></div>
+    </div>
+  </details>
+
+  <!-- 模式切换 Tabs -->
+  <div class="wb-tabs">
+    <div class="wb-tablist" role="tablist" aria-label="思考捕获模式">
+      <button
+        type="button"
+        role="tab"
+        id="tab-btn-quick"
+        aria-controls="panel-quick"
+        aria-selected="true"
+        class="wb-tab is-active"
+      >
+        快速思考（直存 inbox/）
+      </button>
+      <button
+        type="button"
+        role="tab"
+        id="tab-btn-struct"
+        aria-controls="panel-struct"
+        aria-selected="false"
+        class="wb-tab"
+      >
+        结构化沉淀（脱敏入 staged/）
+      </button>
+    </div>
+
+    <!-- Tab 1：快速思考（默认激活） -->
+    <section
+      id="panel-quick"
+      role="tabpanel"
+      aria-labelledby="tab-btn-quick"
+      class="wb-card wb-panel"
+    >
+      <div class="wb-field">
+        <label class="wb-label" for="quick-title">标题（可选）</label>
+        <input
+          id="quick-title"
+          class="wb-input"
+          type="text"
+          maxlength="100"
+          placeholder="留空则按当前本地日期时间自动生成标题"
+        />
+      </div>
+
+      <div class="wb-field">
+        <div class="wb-label-row">
+          <label class="wb-label" for="quick-body">思考内容（支持 Markdown，L3 私密直存）</label>
+          <span class="wb-draft-note" id="quick-draft-note">草稿自动暂存本机</span>
+        </div>
+        <textarea
+          id="quick-body"
+          class="wb-textarea wb-textarea--lg"
+          rows="8"
+          placeholder="随时记录灵光一现的思考、问题推演、阅读心得或当日原始复盘……"
+        ></textarea>
+      </div>
+
+      <div class="wb-field">
+        <label class="wb-label" for="quick-tags">标签（可选，英文逗号分隔）</label>
+        <input
+          id="quick-tags"
+          class="wb-input"
+          type="text"
+          placeholder="例如：mental-model, architecture, reading"
+        />
+      </div>
+
+      <p class="wb-path-bar">
+        写入路径预览：<code id="quick-path-preview">inbox/...</code>
+        <span class="badge">privacy_level: L3</span>
+      </p>
+
+      <div class="wb-actions">
+        <button type="button" class="wb-btn wb-btn--primary" id="btn-save-inbox">
+          存入私有库 inbox/
+        </button>
+        <button type="button" class="wb-btn wb-btn--ghost" id="btn-clear-quick">
+          清空草稿
+        </button>
+      </div>
+
+      <div class="wb-alert" id="quick-result" role="status" aria-live="polite" hidden></div>
+    </section>
+
+    <!-- Tab 2：结构化沉淀（脱敏草稿 → staged/） -->
+    <section
+      id="panel-struct"
+      role="tabpanel"
+      aria-labelledby="tab-btn-struct"
+      class="wb-card wb-panel"
+      hidden
+    >
+      <div class="wb-grid wb-grid--2">
+        <div class="wb-field">
+          <label class="wb-label" for="st-type">内容类型（C-1）</label>
+          <select id="st-type" class="wb-select">
+            <option value="knowledge">知识条目（knowledge）</option>
+            <option value="journal">每日复盘（journal）</option>
+            <option value="error">错误经验（error）</option>
+            <option value="project">项目记录（project）</option>
+          </select>
+        </div>
+
+        <div class="wb-field">
+          <label class="wb-label" for="st-id">条目 ID（C-2 唯一编号）</label>
+          <input
+            id="st-id"
+            class="wb-input"
+            type="text"
+            value="KB-ENG-007"
+            autocomplete="off"
+            spellcheck="false"
+          />
+        </div>
+      </div>
+
+      <div class="wb-field" id="st-slug-wrap">
+        <label class="wb-label" for="st-slug">文件短名 slug（仅小写字母、数字与连字符）</label>
+        <input
+          id="st-slug"
+          class="wb-input"
+          type="text"
+          value="dual-repo-capture"
+          autocomplete="off"
+          spellcheck="false"
+          placeholder="例如：git-rebase-notes（拼在 id 小写前缀之后）"
+        />
+      </div>
+
+      <div class="wb-field">
+        <label class="wb-label" for="st-title">标题 title（必填，4..80 字符）</label>
+        <input
+          id="st-title"
+          class="wb-input"
+          type="text"
+          maxlength="80"
+          placeholder="清晰概括这条核心结论或复盘主题（4..80 字）"
+        />
+      </div>
+
+      <div class="wb-field">
+        <div class="wb-label-row">
+          <label class="wb-label" for="st-summary">一句话摘要 summary（必填，20..200 字符）</label>
+          <span class="wb-draft-note" id="st-summary-count">0 / 20..200 字</span>
+        </div>
+        <textarea
+          id="st-summary"
+          class="wb-textarea"
+          rows="2"
+          maxlength="200"
+          placeholder="用一句话说明这条内容解决什么具体问题或沉淀了什么可复用结论（20..200 字符）"
+        ></textarea>
+      </div>
+
+      <div class="wb-grid wb-grid--2">
+        <div class="wb-field">
+          <label class="wb-label" for="st-tags">受控标签 tags（逗号分隔 kebab-case）</label>
+          <input
+            id="st-tags"
+            class="wb-input"
+            type="text"
+            placeholder="例如：architecture, workflow, note-taking"
+          />
+        </div>
+        <div class="wb-field">
+          <label class="wb-label" for="st-vault-ref">关联私密原稿指针 vault_ref（可选）</label>
+          <input
+            id="st-vault-ref"
+            class="wb-input"
+            type="text"
+            autocomplete="off"
+            spellcheck="false"
+            placeholder="例如：vault:inbox/2026/raw-note.md"
+          />
+        </div>
+      </div>
+
+      <!-- 类型专属字段：knowledge -->
+      <fieldset class="wb-fieldset" data-type-group="knowledge">
+        <legend class="wb-fieldset__legend">知识专属字段（C-5）</legend>
+        <div class="wb-grid wb-grid--3">
+          <div class="wb-field">
+            <label class="wb-label" for="kb-domain">领域 domain</label>
+            <select id="kb-domain" class="wb-select">
+              <option value="engineering">engineering（ENG）</option>
+              <option value="product">product（PRD）</option>
+              <option value="design">design（DSN）</option>
+              <option value="data">data（DAT）</option>
+              <option value="finance">finance（FIN）</option>
+              <option value="language">language（LNG）</option>
+              <option value="health">health（HLT）</option>
+              <option value="life">life（LIF）</option>
+              <option value="meta">meta（MET）</option>
+            </select>
+          </div>
+          <div class="wb-field">
+            <label class="wb-label" for="kb-status">状态 status</label>
+            <select id="kb-status" class="wb-select">
+              <option value="seed">seed（萌芽待核实）</option>
+              <option value="verified">verified（已核实，需填来源）</option>
+              <option value="stale">stale（待复核）</option>
+              <option value="archived">archived（归档）</option>
+            </select>
+          </div>
+          <div class="wb-field">
+            <label class="wb-label" for="kb-confidence">可信度 confidence</label>
+            <select id="kb-confidence" class="wb-select">
+              <option value="medium">medium</option>
+              <option value="high">high（需非 AI 来源）</option>
+              <option value="low">low</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="wb-grid wb-grid--3">
+          <div class="wb-field">
+            <label class="wb-label" for="kb-source-kind">来源类型 source.kind</label>
+            <select id="kb-source-kind" class="wb-select">
+              <option value="experience">experience（亲历实践）</option>
+              <option value="url">url（网页文档）</option>
+              <option value="book">book（书籍）</option>
+              <option value="paper">paper（论文）</option>
+              <option value="course">course（课程）</option>
+              <option value="person">person（交流）</option>
+              <option value="agent">agent（AI 辅助）</option>
+            </select>
+          </div>
+          <div class="wb-field">
+            <label class="wb-label" for="kb-source-ref">来源引用 source.ref</label>
+            <input
+              id="kb-source-ref"
+              class="wb-input"
+              type="text"
+              placeholder="书名、官方文档链接或实践项目说明（verified 必填）"
+            />
+          </div>
+          <div class="wb-field">
+            <label class="wb-label" for="kb-source-locator">来源定位 locator（可选）</label>
+            <input
+              id="kb-source-locator"
+              class="wb-input"
+              type="text"
+              placeholder="章节号、小节标题或提交记录"
+            />
+          </div>
+        </div>
+      </fieldset>
+
+      <!-- 类型专属字段：journal -->
+      <fieldset class="wb-fieldset" data-type-group="journal" hidden>
+        <legend class="wb-fieldset__legend">每日复盘专属字段（C-7，默认 draft + self-reported）</legend>
+        <div class="wb-grid wb-grid--2">
+          <div class="wb-field">
+            <label class="wb-label" for="dj-date">复盘日期 date（自动同步 ID 与文件名）</label>
+            <input id="dj-date" class="wb-input" type="date" />
+          </div>
+          <div class="wb-field">
+            <label class="wb-label" for="dj-energy">精力状态 energy（可选，1..5）</label>
+            <select id="dj-energy" class="wb-select">
+              <option value="">不记录</option>
+              <option value="5">5 — 充沛专注</option>
+              <option value="4">4 — 稳定推进</option>
+              <option value="3">3 — 常态平稳</option>
+              <option value="2">2 — 略显疲惫</option>
+              <option value="1">1 — 亟需休整</option>
+            </select>
+          </div>
+        </div>
+        <div class="wb-grid wb-grid--2">
+          <div class="wb-field">
+            <label class="wb-label" for="dj-did">今日完成 did（必填，每行一项）</label>
+            <textarea
+              id="dj-did"
+              class="wb-textarea"
+              rows="3"
+              placeholder="每行填写一项已完成的实质进展（至少 1 项）"
+            ></textarea>
+          </div>
+          <div class="wb-field">
+            <label class="wb-label" for="dj-learned">今日收获 learned（必填，每行一项）</label>
+            <textarea
+              id="dj-learned"
+              class="wb-textarea"
+              rows="3"
+              placeholder="每行填写一条新认知或经验总结（至少 1 项）"
+            ></textarea>
+          </div>
+        </div>
+        <div class="wb-grid wb-grid--2">
+          <div class="wb-field">
+            <label class="wb-label" for="dj-blocked">卡点 blocked（可选，每行一项）</label>
+            <textarea
+              id="dj-blocked"
+              class="wb-textarea"
+              rows="2"
+              placeholder="可选：当前阻碍或待外部确认事项"
+            ></textarea>
+          </div>
+          <div class="wb-field">
+            <label class="wb-label" for="dj-tomorrow">明日计划 tomorrow（可选，每行一项）</label>
+            <textarea
+              id="dj-tomorrow"
+              class="wb-textarea"
+              rows="2"
+              placeholder="可选：下一步优先推进事项"
+            ></textarea>
+          </div>
+        </div>
+      </fieldset>
+
+      <!-- 类型专属字段：error -->
+      <fieldset class="wb-fieldset" data-type-group="error" hidden>
+        <legend class="wb-fieldset__legend">错误经验五要素（C-8，每项必填且至少 8 个字）</legend>
+        <div class="wb-grid wb-grid--3">
+          <div class="wb-field">
+            <label class="wb-label" for="er-occurred">发生日期 occurred</label>
+            <input id="er-occurred" class="wb-input" type="date" />
+          </div>
+          <div class="wb-field">
+            <label class="wb-label" for="er-severity">严重程度 severity</label>
+            <select id="er-severity" class="wb-select">
+              <option value="medium">medium</option>
+              <option value="high">high</option>
+              <option value="low">low</option>
+            </select>
+          </div>
+          <div class="wb-field">
+            <label class="wb-label" for="er-project">关联项目 ID（可选）</label>
+            <input
+              id="er-project"
+              class="wb-input"
+              type="text"
+              placeholder="例如：PJ-141（留空则不填）"
+            />
+          </div>
+        </div>
+        <div class="wb-field">
+          <label class="wb-label" for="er-symptom">1. 症状 symptom（≥8 字）</label>
+          <input id="er-symptom" class="wb-input" type="text" placeholder="可观测到的报错现象或异常行为（至少 8 个字符）" />
+        </div>
+        <div class="wb-field">
+          <label class="wb-label" for="er-context">2. 触发上下文 context（≥8 字）</label>
+          <input id="er-context" class="wb-input" type="text" placeholder="运行环境、前置操作与重现条件（至少 8 个字符）" />
+        </div>
+        <div class="wb-field">
+          <label class="wb-label" for="er-root-cause">3. 根本原因 root_cause（≥8 字）</label>
+          <input id="er-root-cause" class="wb-input" type="text" placeholder="导致问题的底层机制原因而非表象（至少 8 个字符）" />
+        </div>
+        <div class="wb-field">
+          <label class="wb-label" for="er-fix">4. 修复方案 fix（≥8 字）</label>
+          <input id="er-fix" class="wb-input" type="text" placeholder="实际采取并验证有效的修复措施（至少 8 个字符）" />
+        </div>
+        <div class="wb-field">
+          <label class="wb-label" for="er-prevention">5. 预防措施 prevention（≥8 字）</label>
+          <input id="er-prevention" class="wb-input" type="text" placeholder="后续自动化门禁或检查清单防重犯机制（至少 8 个字符）" />
+        </div>
+      </fieldset>
+
+      <!-- 类型专属字段：project -->
+      <fieldset class="wb-fieldset" data-type-group="project" hidden>
+        <legend class="wb-fieldset__legend">项目专属字段（C-6）</legend>
+        <div class="wb-grid wb-grid--2">
+          <div class="wb-field">
+            <label class="wb-label" for="pj-status">项目状态 status</label>
+            <select id="pj-status" class="wb-select">
+              <option value="active">active（进行中）</option>
+              <option value="shipped">shipped（已上线）</option>
+              <option value="idea">idea（构想）</option>
+              <option value="paused">paused（暂停）</option>
+              <option value="archived">archived（归档）</option>
+            </select>
+          </div>
+          <div class="wb-field">
+            <label class="wb-label" for="pj-role">承担角色 role（必填）</label>
+            <input id="pj-role" class="wb-input" type="text" placeholder="例如：主架构与独立开发者" />
+          </div>
+        </div>
+        <div class="wb-grid wb-grid--2">
+          <div class="wb-field">
+            <label class="wb-label" for="pj-start">起始月份 period.start（YYYY-MM）</label>
+            <input id="pj-start" class="wb-input" type="month" />
+          </div>
+          <div class="wb-field">
+            <label class="wb-label" for="pj-end">结束月份 period.end（进行中留空）</label>
+            <input id="pj-end" class="wb-input" type="month" />
+          </div>
+        </div>
+        <div class="wb-field">
+          <label class="wb-label" for="pj-stack">技术栈 stack（英文逗号分隔）</label>
+          <input id="pj-stack" class="wb-input" type="text" placeholder="例如：astro, zod, pagefind, github-actions" />
+        </div>
+        <div class="wb-field">
+          <label class="wb-label" for="pj-outcomes">可验证成果 outcomes（必填，每行一项）</label>
+          <textarea
+            id="pj-outcomes"
+            class="wb-textarea"
+            rows="3"
+            placeholder="每行填写一项客观可验证的交付成果（禁止空泛套话，至少 1 项）"
+          ></textarea>
+        </div>
+      </fieldset>
+
+      <!-- 正文输入 -->
+      <div class="wb-field">
+        <label class="wb-label" for="st-body">正文内容（已脱敏 Markdown，建议不少于 80 字）</label>
+        <textarea
+          id="st-body"
+          class="wb-textarea wb-textarea--lg"
+          rows="8"
+          placeholder="在此撰写结构化正文（可使用 ## 二级标题组织背景、推导与结论；请确保不含未脱敏个人信息）……"
+        ></textarea>
+      </div>
+
+      <!-- 前端实时 V-010 敏感信息拦截雷达 -->
+      <div class="wb-alert wb-alert--ok" id="v010-radar" role="status" aria-live="polite">
+        V-010 敏感信息预检通过：未检测到邮箱、手机号、身份证号、API 密钥或私钥块。
+      </div>
+
+      <!-- 契约必填项校验提示 -->
+      <div class="wb-alert wb-alert--info" id="st-contract-status" role="status" aria-live="polite" hidden></div>
+
+      <!-- 实时路径与 Markdown 预览 -->
+      <div class="wb-preview-box">
+        <div class="wb-preview-box__head">
+          <span class="wb-path-bar">
+            推导目标路径：<code id="st-path-preview">staged/knowledge/kb-eng-007-dual-repo-capture.md</code>
+          </span>
+          <div class="wb-preview-box__tools">
+            <button type="button" class="wb-btn wb-btn--secondary wb-btn--sm" id="btn-copy-md">
+              复制 Markdown
+            </button>
+            <button type="button" class="wb-btn wb-btn--secondary wb-btn--sm" id="btn-download-md">
+              下载 .md
+            </button>
+          </div>
+        </div>
+        <pre class="wb-preview"><code id="st-md-preview"></code></pre>
+      </div>
+
+      <!-- 提交与跨仓同步动作 -->
+      <div class="wb-actions">
+        <button type="button" class="wb-btn wb-btn--primary" id="btn-save-staged">
+          存入私有库 staged/ 待同步
+        </button>
+        <button type="button" class="wb-btn wb-btn--secondary" id="btn-dispatch-sync">
+          一键触发同步 PR 至公开知识站
+        </button>
+      </div>
+
+      <div class="wb-alert" id="struct-result" role="status" aria-live="polite" hidden></div>
+    </section>
+  </div>
+</Base>
+
+<script is:inline>
+  (function () {
+    var STORAGE_CONN_KEY = "pko_capture_conn_v1";
+    var STORAGE_QUICK_KEY = "pko_capture_quick_draft_v1";
+
+    var DOMAIN_CODES = {
+      engineering: "ENG",
+      product: "PRD",
+      design: "DSN",
+      data: "DAT",
+      finance: "FIN",
+      language: "LNG",
+      health: "HLT",
+      life: "LIF",
+      meta: "MET",
+    };
+
+    // 构造同源 V-010 敏感检测规则（采用片段运行时拼装，避免静态产物本身混入敏感特征串）
+    var atChar = String.fromCharCode(64);
+    var pkMarker = ["PRI", "VATE"].join("") + " " + ["KE", "Y"].join("");
+    var skPrefix = ["s", "k", "-"].join("");
+    var ghPrefix = ["g", "h"].join("");
+    var ghPatPrefix = ["git", "hub", "_", "pat", "_"].join("");
+    var akPrefix = ["AK", "IA"].join("");
+    var awsSecPrefix = ["AWS", "SECRET", "ACCESS", "KEY"].join("_");
+
+    var V010_RULES = [
+      {
+        label: "邮箱地址",
+        re: new RegExp(
+          "[A-Za-z0-9._%+-]+" + atChar + "[A-Za-z0-9-]+(?:\\.[A-Za-z0-9-]+)*\\.[A-Za-z]{2,}"
+        ),
+      },
+      {
+        label: "中国大陆手机号",
+        re: new RegExp("(?:^|[^0-9])1[3-9][0-9]{9}(?![0-9])"),
+      },
+      {
+        label: "居民身份证号",
+        re: new RegExp("(?:^|[^0-9])[0-9]{17}[0-9Xx](?![0-9])"),
+      },
+      {
+        label: "OpenAI 风格密钥",
+        re: new RegExp("\\b" + skPrefix + "[A-Za-z0-9_-]{16,}"),
+      },
+      {
+        label: "GitHub 个人访问令牌",
+        re: new RegExp(
+          "\\b(?:" + ghPrefix + "[pousr]_[A-Za-z0-9]{20,}|" + ghPatPrefix + "[A-Za-z0-9_]{20,})"
+        ),
+      },
+      {
+        label: "AWS 访问密钥",
+        re: new RegExp(
+          "(?:\\b" + akPrefix + "[0-9A-Z]{16}\\b|" + awsSecPrefix + "\\s*=\\s*[\"']?[A-Za-z0-9/+=]{16,})"
+        ),
+      },
+      {
+        label: "私钥块",
+        re: new RegExp("-----BEGIN (?:[A-Z ]*?)?" + pkMarker + "-----"),
+      },
+    ];
+
+    function byId(id) {
+      return document.getElementById(id);
+    }
+
+    function pad2(n) {
+      return n < 10 ? "0" + n : String(n);
+    }
+
+    function localDateISO(d) {
+      var dt = d || new Date();
+      return dt.getFullYear() + "-" + pad2(dt.getMonth() + 1) + "-" + pad2(dt.getDate());
+    }
+
+    function localMonthISO(d) {
+      var dt = d || new Date();
+      return dt.getFullYear() + "-" + pad2(dt.getMonth() + 1);
+    }
+
+    function localTimestampCompact(d) {
+      var dt = d || new Date();
+      return (
+        localDateISO(dt) +
+        "-" +
+        pad2(dt.getHours()) +
+        pad2(dt.getMinutes()) +
+        pad2(dt.getSeconds())
+      );
+    }
+
+    function localOffsetISO(d) {
+      var dt = d || new Date();
+      var off = -dt.getTimezoneOffset();
+      var sign = off >= 0 ? "+" : "-";
+      var abs = Math.abs(off);
+      return (
+        localDateISO(dt) +
+        "T" +
+        pad2(dt.getHours()) +
+        ":" +
+        pad2(dt.getMinutes()) +
+        ":" +
+        pad2(dt.getSeconds()) +
+        sign +
+        pad2(Math.floor(abs / 60)) +
+        ":" +
+        pad2(abs % 60)
+      );
+    }
+
+    function slugify(input, fallback) {
+      var s = String(input || "")
+        .toLowerCase()
+        .replace(/[^a-z0-9-]+/g, "-")
+        .replace(/-+/g, "-")
+        .replace(/^-|-$/g, "")
+        .slice(0, 48);
+      return s || fallback || "note";
+    }
+
+    function parseTags(raw) {
+      return String(raw || "")
+        .split(",")
+        .map(function (t) {
+          return t
+            .trim()
+            .toLowerCase()
+            .replace(/[^a-z0-9-]+/g, "-")
+            .replace(/-+/g, "-")
+            .replace(/^-|-$/g, "");
+        })
+        .filter(function (t) {
+          return t.length >= 2 && t.length <= 24;
+        })
+        .slice(0, 12);
+    }
+
+    function parseLines(raw) {
+      return String(raw || "")
+        .split(/\r?\n/)
+        .map(function (line) {
+          return line.replace(/^\s*[-*•]\s*/, "").trim();
+        })
+        .filter(Boolean);
+    }
+
+    function yamlStr(val) {
+      return JSON.stringify(String(val == null ? "" : val));
+    }
+
+    function yamlStrArray(items) {
+      if (!items || items.length === 0) return "[]";
+      return (
+        "\n" +
+        items
+          .map(function (item) {
+            return "  - " + yamlStr(item);
+          })
+          .join("\n")
+      );
+    }
+
+    function utf8ToBase64(text) {
+      var bytes = new TextEncoder().encode(text);
+      var chunkSize = 8192;
+      var binary = "";
+      for (var i = 0; i < bytes.length; i += chunkSize) {
+        var sub = bytes.subarray(i, i + chunkSize);
+        binary += String.fromCharCode.apply(null, Array.from(sub));
+      }
+      return btoa(binary);
+    }
+
+    function encodeRepoPath(repoPath) {
+      return String(repoPath || "")
+        .split("/")
+        .filter(Boolean)
+        .map(encodeURIComponent)
+        .join("/");
+    }
+
+    function parseRepoSlug(raw) {
+      var trimmed = String(raw || "").trim().replace(/^\/+|\/+$/g, "");
+      if (!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(trimmed)) return null;
+      var parts = trimmed.split("/");
+      return {
+        full: trimmed,
+        owner: parts[0],
+        repo: parts[1],
+        encoded: encodeURIComponent(parts[0]) + "/" + encodeURIComponent(parts[1]),
+      };
+    }
+
+    function setAlert(el, kind, text, linkInfo) {
+      if (!el) return;
+      el.hidden = false;
+      el.className = "wb-alert wb-alert--" + kind;
+      el.textContent = "";
+      var span = document.createElement("span");
+      span.textContent = text;
+      el.appendChild(span);
+      if (linkInfo && linkInfo.url) {
+        var sep = document.createTextNode(" ");
+        var a = document.createElement("a");
+        a.href = linkInfo.url;
+        a.target = "_blank";
+        a.rel = "noopener noreferrer";
+        a.textContent = linkInfo.label || linkInfo.url;
+        el.appendChild(sep);
+        el.appendChild(a);
+      }
+    }
+
+    // ---- 连接状态与防呆保护 ----
+    var connDetails = byId("wb-settings");
+    var cfgRepo = byId("cfg-repo");
+    var cfgBranch = byId("cfg-branch");
+    var cfgToken = byId("cfg-token");
+    var connBadge = byId("conn-badge");
+    var connStatus = byId("conn-status");
+    var btnVerifyConn = byId("btn-verify-conn");
+    var btnClearConn = byId("btn-clear-conn");
+    var btnSaveInbox = byId("btn-save-inbox");
+    var btnSaveStaged = byId("btn-save-staged");
+    var btnDispatchSync = byId("btn-dispatch-sync");
+
+    // verifiedPrivateRepo 记录已通过 private===true 校验的 repo slug；blockedPublic 标记是否触发公开库阻断
+    var verifiedPrivateRepo = null;
+    var blockedPublic = false;
+    var v010Blocked = false;
+
+    function syncWriteButtonsState() {
+      if (btnSaveInbox) {
+        btnSaveInbox.disabled = blockedPublic;
+      }
+      if (btnSaveStaged) {
+        btnSaveStaged.disabled = blockedPublic || v010Blocked;
+      }
+      if (btnDispatchSync) {
+        btnDispatchSync.disabled = blockedPublic;
+      }
+    }
+
+    function setBadge(text, variant) {
+      if (!connBadge) return;
+      connBadge.textContent = text;
+      connBadge.className = "badge" + (variant ? " " + variant : "");
+    }
+
+    function loadSavedConn() {
+      try {
+        var raw = localStorage.getItem(STORAGE_CONN_KEY);
+        if (!raw) return;
+        var data = JSON.parse(raw);
+        if (data && typeof data === "object") {
+          if (data.repo && cfgRepo) cfgRepo.value = String(data.repo);
+          if (data.branch && cfgBranch) cfgBranch.value = String(data.branch);
+          if (data.token && cfgToken) {
+            cfgToken.value = String(data.token);
+            setBadge("已载入本机令牌（待校验）", "badge--kind");
+            if (connDetails) connDetails.open = false;
+          }
+        }
+      } catch (_e) {
+        // 忽略损坏的本地存储
+      }
+    }
+
+    // 修改目标仓库或令牌时重置校验缓存
+    [cfgRepo, cfgToken].forEach(function (inp) {
+      if (!inp) return;
+      inp.addEventListener("input", function () {
+        verifiedPrivateRepo = null;
+        blockedPublic = false;
+        syncWriteButtonsState();
+      });
+    });
+
+    async function verifyPrivateRepo(saveOnSuccess) {
+      var parsed = parseRepoSlug(cfgRepo && cfgRepo.value);
+      var branch = String((cfgBranch && cfgBranch.value) || "main").trim() || "main";
+      var token = String((cfgToken && cfgToken.value) || "").trim();
+
+      if (!parsed) {
+        setAlert(connStatus, "danger", "仓库格式错误：请填写 owner/repo（例如 cvcingcvc-code/personal-knowledge-vault）。");
+        return null;
+      }
+      if (!token) {
+        if (connDetails) connDetails.open = true;
+        setAlert(connStatus, "danger", "请先在「私有库连接设置」中粘贴 Fine-Grained Token。");
+        return null;
+      }
+
+      setBadge("正在验证连接…", "");
+      setAlert(connStatus, "info", "正在连接 GitHub API 校验仓库私有属性…");
+
+      try {
+        var res = await fetch("https://api.github.com/repos/" + parsed.encoded, {
+          method: "GET",
+          headers: {
+            Authorization: "Bearer " + token,
+            Accept: "application/vnd.github+json",
+            "X-GitHub-Api-Version": "2022-11-28",
+          },
+        });
+
+        if (!res.ok) {
+          verifiedPrivateRepo = null;
+          blockedPublic = false;
+          syncWriteButtonsState();
+          setBadge("连接校验未通过", "badge--warn");
+          var hint =
+            res.status === 401
+              ? "令牌无效或已过期（HTTP 401），请检查并重新生成 Fine-Grained Token。"
+              : res.status === 404
+                ? "无法访问目标仓库（HTTP 404）：请确认私有仓库已建立，且该令牌已授权访问此仓库。"
+                : "GitHub API 返回异常状态（HTTP " + res.status + "）。";
+          setAlert(connStatus, "danger", hint);
+          return null;
+        }
+
+        var repoData = await res.json();
+        if (repoData.private !== true) {
+          verifiedPrivateRepo = null;
+          blockedPublic = true;
+          syncWriteButtonsState();
+          if (connDetails) connDetails.open = true;
+          setBadge("已阻断：非私有库", "badge--warn");
+          setAlert(
+            connStatus,
+            "danger",
+            "安全阻断：目标仓库不是 Private 私有仓库！拒绝向公开仓库直接写入原始思考。"
+          );
+          return null;
+        }
+
+        // Private === true 校验通过
+        blockedPublic = false;
+        verifiedPrivateRepo = repoData.full_name || parsed.full;
+        syncWriteButtonsState();
+        setBadge("Private 私有库已连接", "badge--status-verified");
+        setAlert(
+          connStatus,
+          "ok",
+          "已连接私有仓库 " + verifiedPrivateRepo + "（Private 校验通过）"
+        );
+
+        if (saveOnSuccess) {
+          try {
+            localStorage.setItem(
+              STORAGE_CONN_KEY,
+              JSON.stringify({ repo: parsed.full, branch: branch, token: token })
+            );
+          } catch (_e) {
+            // 忽略隐私无痕窗口配额限制
+          }
+        }
+
+        return { parsed: parsed, branch: branch, token: token, fullName: verifiedPrivateRepo };
+      } catch (_err) {
+        verifiedPrivateRepo = null;
+        setBadge("网络请求失败", "badge--warn");
+        setAlert(connStatus, "danger", "无法连接 api.github.com，请检查当前网络环境后重试。");
+        return null;
+      }
+    }
+
+    async function ensureVerifiedConn() {
+      var parsed = parseRepoSlug(cfgRepo && cfgRepo.value);
+      var branch = String((cfgBranch && cfgBranch.value) || "main").trim() || "main";
+      var token = String((cfgToken && cfgToken.value) || "").trim();
+      if (!parsed || !token) {
+        return verifyPrivateRepo(false);
+      }
+      if (blockedPublic) {
+        if (connDetails) connDetails.open = true;
+        return null;
+      }
+      if (verifiedPrivateRepo && verifiedPrivateRepo.toLowerCase() === parsed.full.toLowerCase()) {
+        return { parsed: parsed, branch: branch, token: token, fullName: verifiedPrivateRepo };
+      }
+      return verifyPrivateRepo(true);
+    }
+
+    if (btnVerifyConn) {
+      btnVerifyConn.addEventListener("click", function () {
+        verifyPrivateRepo(true);
+      });
+    }
+
+    if (btnClearConn) {
+      btnClearConn.addEventListener("click", function () {
+        try {
+          localStorage.removeItem(STORAGE_CONN_KEY);
+        } catch (_e) {}
+        if (cfgToken) cfgToken.value = "";
+        verifiedPrivateRepo = null;
+        blockedPublic = false;
+        syncWriteButtonsState();
+        setBadge("未配置本机令牌", "");
+        setAlert(connStatus, "info", "已清除保存在本机浏览器中的令牌。");
+      });
+    }
+
+    // ---- Tabs 切换 ----
+    var tabQuick = byId("tab-btn-quick");
+    var tabStruct = byId("tab-btn-struct");
+    var panelQuick = byId("panel-quick");
+    var panelStruct = byId("panel-struct");
+
+    function switchTab(mode) {
+      var isQuick = mode === "quick";
+      if (tabQuick) {
+        tabQuick.setAttribute("aria-selected", isQuick ? "true" : "false");
+        tabQuick.classList.toggle("is-active", isQuick);
+      }
+      if (tabStruct) {
+        tabStruct.setAttribute("aria-selected", isQuick ? "false" : "true");
+        tabStruct.classList.toggle("is-active", !isQuick);
+      }
+      if (panelQuick) panelQuick.hidden = !isQuick;
+      if (panelStruct) panelStruct.hidden = isQuick;
+      if (!isQuick) refreshStructuredPreview();
+    }
+
+    if (tabQuick) {
+      tabQuick.addEventListener("click", function () {
+        switchTab("quick");
+      });
+    }
+    if (tabStruct) {
+      tabStruct.addEventListener("click", function () {
+        switchTab("struct");
+      });
+    }
+
+    // ---- Tab 1：快速思考（直存私有库 inbox/） ----
+    var quickTitle = byId("quick-title");
+    var quickBody = byId("quick-body");
+    var quickTags = byId("quick-tags");
+    var quickDraftNote = byId("quick-draft-note");
+    var quickPathPreview = byId("quick-path-preview");
+    var btnClearQuick = byId("btn-clear-quick");
+    var quickResult = byId("quick-result");
+
+    function computeQuickMeta(now) {
+      var dt = now || new Date();
+      var year = String(dt.getFullYear());
+      var ts = localTimestampCompact(dt);
+      var rawTitle = String((quickTitle && quickTitle.value) || "").trim();
+      var finalTitle =
+        rawTitle ||
+        "思考记录 " +
+          localDateISO(dt) +
+          " " +
+          pad2(dt.getHours()) +
+          ":" +
+          pad2(dt.getMinutes());
+      var slug = slugify(rawTitle, "thought");
+      var path = "inbox/" + year + "/" + ts + "-" + slug + ".md";
+      return { dt: dt, title: finalTitle, path: path };
+    }
+
+    function updateQuickPreviewAndCache(saveDraft) {
+      var meta = computeQuickMeta(new Date());
+      if (quickPathPreview) quickPathPreview.textContent = meta.path;
+      if (saveDraft) {
+        try {
+          localStorage.setItem(
+            STORAGE_QUICK_KEY,
+            JSON.stringify({
+              title: (quickTitle && quickTitle.value) || "",
+              body: (quickBody && quickBody.value) || "",
+              tags: (quickTags && quickTags.value) || "",
+            })
+          );
+          if (quickDraftNote) {
+            quickDraftNote.textContent =
+              "本地草稿已暂存（" + pad2(meta.dt.getHours()) + ":" + pad2(meta.dt.getMinutes()) + "）";
+          }
+        } catch (_e) {}
+      }
+    }
+
+    function loadQuickDraft() {
+      try {
+        var raw = localStorage.getItem(STORAGE_QUICK_KEY);
+        if (!raw) return;
+        var d = JSON.parse(raw);
+        if (d && typeof d === "object") {
+          if (d.title && quickTitle) quickTitle.value = String(d.title);
+          if (d.body && quickBody) quickBody.value = String(d.body);
+          if (d.tags && quickTags) quickTags.value = String(d.tags);
+          if ((d.title || d.body || d.tags) && quickDraftNote) {
+            quickDraftNote.textContent = "已恢复上次未提交的本地草稿";
+          }
+        }
+      } catch (_e) {}
+    }
+
+    [quickTitle, quickBody, quickTags].forEach(function (el) {
+      if (!el) return;
+      el.addEventListener("input", function () {
+        updateQuickPreviewAndCache(true);
+      });
+    });
+
+    if (btnClearQuick) {
+      btnClearQuick.addEventListener("click", function () {
+        if (quickTitle) quickTitle.value = "";
+        if (quickBody) quickBody.value = "";
+        if (quickTags) quickTags.value = "";
+        try {
+          localStorage.removeItem(STORAGE_QUICK_KEY);
+        } catch (_e) {}
+        if (quickDraftNote) quickDraftNote.textContent = "草稿已清空";
+        updateQuickPreviewAndCache(false);
+      });
+    }
+
+    if (btnSaveInbox) {
+      btnSaveInbox.addEventListener("click", async function () {
+        var bodyText = String((quickBody && quickBody.value) || "").trim();
+        if (!bodyText) {
+          setAlert(quickResult, "danger", "思考正文不能为空，请先输入内容。");
+          if (quickBody) quickBody.focus();
+          return;
+        }
+
+        var conn = await ensureVerifiedConn();
+        if (!conn) {
+          setAlert(
+            quickResult,
+            "danger",
+            blockedPublic
+              ? "安全阻断：目标仓库不是 Private 私有仓库，已禁止写入！"
+              : "连接未就绪：请先在上方「私有库连接设置」保存并验证有效令牌。"
+          );
+          return;
+        }
+
+        var now = new Date();
+        var meta = computeQuickMeta(now);
+        var tags = parseTags(quickTags && quickTags.value);
+        var tagsYaml =
+          tags.length === 0
+            ? "[]"
+            : "[" + tags.map(yamlStr).join(", ") + "]";
+        var md =
+          [
+            "---",
+            "title: " + yamlStr(meta.title),
+            "captured_at: " + yamlStr(localOffsetISO(now)),
+            "tags: " + tagsYaml,
+            "privacy_level: L3",
+            "---",
+            "",
+            bodyText,
+            "",
+          ].join("\n");
+
+        btnSaveInbox.disabled = true;
+        setAlert(quickResult, "info", "正在加密传输并写入私有库 " + meta.path + " …");
+
+        try {
+          var apiUrl =
+            "https://api.github.com/repos/" +
+            conn.parsed.encoded +
+            "/contents/" +
+            encodeRepoPath(meta.path);
+          var res = await fetch(apiUrl, {
+            method: "PUT",
+            headers: {
+              Authorization: "Bearer " + conn.token,
+              Accept: "application/vnd.github+json",
+              "Content-Type": "application/json",
+              "X-GitHub-Api-Version": "2022-11-28",
+            },
+            body: JSON.stringify({
+              message: "capture(inbox): " + meta.title,
+              content: utf8ToBase64(md),
+              branch: conn.branch,
+            }),
+          });
+
+          if (!res.ok) {
+            var errText = "写入失败（HTTP " + res.status + "）：请确认令牌具备该私有库 Contents 读写权限且分支存在。";
+            setAlert(quickResult, "danger", errText);
+            syncWriteButtonsState();
+            return;
+          }
+
+          var out = await res.json();
+          var fileUrl =
+            (out && out.content && out.content.html_url) ||
+            "https://github.com/" +
+              conn.parsed.full +
+              "/blob/" +
+              encodeURIComponent(conn.branch) +
+              "/" +
+              meta.path;
+
+          // 成功后清空输入框与本地草稿缓存
+          if (quickTitle) quickTitle.value = "";
+          if (quickBody) quickBody.value = "";
+          if (quickTags) quickTags.value = "";
+          try {
+            localStorage.removeItem(STORAGE_QUICK_KEY);
+          } catch (_e) {}
+          if (quickDraftNote) quickDraftNote.textContent = "已存入私有库，本机草稿已清空";
+          updateQuickPreviewAndCache(false);
+
+          setAlert(quickResult, "ok", "已成功存入私有仓库：", {
+            url: fileUrl,
+            label: meta.path + " ↗",
+          });
+        } catch (_e) {
+          setAlert(quickResult, "danger", "网络请求异常，本机草稿已保留，请稍后重试。");
+        } finally {
+          syncWriteButtonsState();
+        }
+      });
+    }
+
+    // ---- Tab 2：结构化沉淀（脱敏草稿 → staged/ + V-010 实时雷达） ----
+    var stType = byId("st-type");
+    var stId = byId("st-id");
+    var stSlugWrap = byId("st-slug-wrap");
+    var stSlug = byId("st-slug");
+    var stTitle = byId("st-title");
+    var stSummary = byId("st-summary");
+    var stSummaryCount = byId("st-summary-count");
+    var stTags = byId("st-tags");
+    var stVaultRef = byId("st-vault-ref");
+    var stBody = byId("st-body");
+
+    var kbDomain = byId("kb-domain");
+    var kbStatus = byId("kb-status");
+    var kbConfidence = byId("kb-confidence");
+    var kbSourceKind = byId("kb-source-kind");
+    var kbSourceRef = byId("kb-source-ref");
+    var kbSourceLocator = byId("kb-source-locator");
+
+    var djDate = byId("dj-date");
+    var djEnergy = byId("dj-energy");
+    var djDid = byId("dj-did");
+    var djLearned = byId("dj-learned");
+    var djBlocked = byId("dj-blocked");
+    var djTomorrow = byId("dj-tomorrow");
+
+    var erOccurred = byId("er-occurred");
+    var erSeverity = byId("er-severity");
+    var erProject = byId("er-project");
+    var erSymptom = byId("er-symptom");
+    var erContext = byId("er-context");
+    var erRootCause = byId("er-root-cause");
+    var erFix = byId("er-fix");
+    var erPrevention = byId("er-prevention");
+
+    var pjStatus = byId("pj-status");
+    var pjRole = byId("pj-role");
+    var pjStart = byId("pj-start");
+    var pjEnd = byId("pj-end");
+    var pjStack = byId("pj-stack");
+    var pjOutcomes = byId("pj-outcomes");
+
+    var v010Radar = byId("v010-radar");
+    var stContractStatus = byId("st-contract-status");
+    var stPathPreview = byId("st-path-preview");
+    var stMdPreview = byId("st-md-preview");
+    var btnCopyMd = byId("btn-copy-md");
+    var btnDownloadMd = byId("btn-download-md");
+    var structResult = byId("struct-result");
+
+    // 初始化默认日期
+    var todayStr = localDateISO(new Date());
+    var monthStr = localMonthISO(new Date());
+    if (djDate && !djDate.value) djDate.value = todayStr;
+    if (erOccurred && !erOccurred.value) erOccurred.value = todayStr;
+    if (pjStart && !pjStart.value) pjStart.value = monthStr;
+
+    function suggestIdForType(t) {
+      if (t === "knowledge") {
+        var dom = (kbDomain && kbDomain.value) || "engineering";
+        var code = DOMAIN_CODES[dom] || "ENG";
+        return "KB-" + code + "-007";
+      }
+      if (t === "journal") {
+        var d = (djDate && djDate.value) || todayStr;
+        return "DJ-" + d;
+      }
+      if (t === "error") {
+        var occ = ((erOccurred && erOccurred.value) || todayStr).replace(/-/g, "");
+        return "ER-" + occ + "-01";
+      }
+      return "PJ-V02";
+    }
+
+    function syncTypeVisibility() {
+      var t = (stType && stType.value) || "knowledge";
+      var groups = document.querySelectorAll("[data-type-group]");
+      groups.forEach(function (g) {
+        g.hidden = g.getAttribute("data-type-group") !== t;
+      });
+      if (stSlugWrap) {
+        stSlugWrap.hidden = t === "journal";
+      }
+      if (stId) {
+        stId.readOnly = t === "journal";
+        stId.value = suggestIdForType(t);
+      }
+      refreshStructuredPreview();
+    }
+
+    if (stType) {
+      stType.addEventListener("change", syncTypeVisibility);
+    }
+
+    if (kbDomain) {
+      kbDomain.addEventListener("change", function () {
+        if (stType && stType.value === "knowledge" && stId) {
+          var code = DOMAIN_CODES[kbDomain.value] || "ENG";
+          var m = /^KB-[A-Z]{2,6}-(\d{3})$/.exec(stId.value.trim());
+          stId.value = "KB-" + code + "-" + (m ? m[1] : "007");
+        }
+        refreshStructuredPreview();
+      });
+    }
+
+    if (djDate) {
+      djDate.addEventListener("input", function () {
+        if (stType && stType.value === "journal" && stId) {
+          stId.value = "DJ-" + (djDate.value || todayStr);
+        }
+        refreshStructuredPreview();
+      });
+    }
+
+    if (erOccurred) {
+      erOccurred.addEventListener("input", function () {
+        if (stType && stType.value === "error" && stId) {
+          var compact = (erOccurred.value || todayStr).replace(/-/g, "");
+          var m = /^ER-\d{8}-(\d{2})$/.exec(stId.value.trim());
+          stId.value = "ER-" + compact + "-" + (m ? m[1] : "01");
+        }
+        refreshStructuredPreview();
+      });
+    }
+
+    function scanV010(text) {
+      var hits = [];
+      for (var i = 0; i < V010_RULES.length; i++) {
+        if (V010_RULES[i].re.test(text)) {
+          hits.push(V010_RULES[i].label);
+        }
+      }
+      return hits;
+    }
+
+    function buildStructuredArtifact() {
+      var t = (stType && stType.value) || "knowledge";
+      var today = localDateISO(new Date());
+      var rawId = String((stId && stId.value) || "").trim().toUpperCase();
+      if (t === "journal") {
+        var jDate = (djDate && djDate.value) || today;
+        rawId = "DJ-" + jDate;
+      }
+
+      var title = String((stTitle && stTitle.value) || "").trim();
+      var summary = String((stSummary && stSummary.value) || "").trim();
+      var tags = parseTags(stTags && stTags.value);
+      var vaultRef = String((stVaultRef && stVaultRef.value) || "").trim();
+      var body = String((stBody && stBody.value) || "").trim();
+      var slug = slugify((stSlug && stSlug.value) || title, "draft");
+
+      var issues = [];
+      if (title.length < 4 || title.length > 80) {
+        issues.push("title 需 4..80 字符（当前 " + title.length + " 字）");
+      }
+      if (summary.length < 20 || summary.length > 200) {
+        issues.push("summary 需 20..200 字符（当前 " + summary.length + " 字）");
+      }
+      if (vaultRef && !/^vault:(?!\/)(?!.*\.\.)[A-Za-z0-9._\-/]+$/.test(vaultRef)) {
+        issues.push("vault_ref 必须形如 vault:inbox/... 相对路径");
+      }
+
+      var idPatterns = {
+        knowledge: /^KB-[A-Z]{2,6}-\d{3}$/,
+        journal: /^DJ-\d{4}-\d{2}-\d{2}$/,
+        error: /^ER-\d{8}-\d{2}$/,
+        project: /^PJ-[A-Z0-9]{2,8}$/,
+      };
+      if (!idPatterns[t].test(rawId)) {
+        issues.push("id 不符合 C-2 规范（当前 " + (rawId || "空") + "）");
+      }
+
+      var targetPath = "";
+      var lines = [
+        "---",
+        "id: " + yamlStr(rawId),
+        "type: " + t,
+        "title: " + yamlStr(title),
+        "summary: " + yamlStr(summary),
+        "created: " + today,
+        "updated: " + today,
+        "published: false",
+        "tags: [" + tags.map(yamlStr).join(", ") + "]",
+        "sample: false",
+        "vault_ref: " + (vaultRef ? yamlStr(vaultRef) : "null"),
+      ];
+
+      if (t === "knowledge") {
+        var dom = (kbDomain && kbDomain.value) || "engineering";
+        var status = (kbStatus && kbStatus.value) || "seed";
+        var conf = (kbConfidence && kbConfidence.value) || "medium";
+        var sKind = (kbSourceKind && kbSourceKind.value) || "experience";
+        var sRef = String((kbSourceRef && kbSourceRef.value) || "").trim();
+        var sLoc = String((kbSourceLocator && kbSourceLocator.value) || "").trim();
+
+        var expectedPrefix = "KB-" + (DOMAIN_CODES[dom] || "ENG") + "-";
+        if (rawId.indexOf(expectedPrefix) !== 0) {
+          issues.push("knowledge id 前缀需匹配领域缩写 " + expectedPrefix);
+        }
+        if (status === "verified" && !sRef) {
+          issues.push("status 为 verified 时必须填写来源引用 source.ref（V-009）");
+        }
+        if (conf === "high" && (!sRef || sKind === "agent")) {
+          issues.push("confidence 为 high 时至少需 1 个非 agent 来源（V-009）");
+        }
+
+        lines.push("domain: " + dom);
+        lines.push("status: " + status);
+        lines.push("confidence: " + conf);
+        if (sRef) {
+          lines.push("sources:");
+          lines.push("  - kind: " + sKind);
+          lines.push("    ref: " + yamlStr(sRef));
+          if (sLoc) lines.push("    locator: " + yamlStr(sLoc));
+          lines.push("    accessed: " + today);
+        } else {
+          lines.push("sources: []");
+        }
+        lines.push("related: []");
+        targetPath = "staged/knowledge/" + rawId.toLowerCase() + "-" + slug + ".md";
+      } else if (t === "journal") {
+        var dVal = (djDate && djDate.value) || today;
+        var yearSeg = dVal.slice(0, 4);
+        var energyVal = (djEnergy && djEnergy.value) || "";
+        var didArr = parseLines(djDid && djDid.value);
+        var learnedArr = parseLines(djLearned && djLearned.value);
+        var blockedArr = parseLines(djBlocked && djBlocked.value);
+        var tomorrowArr = parseLines(djTomorrow && djTomorrow.value);
+
+        if (didArr.length === 0) issues.push("did 至少填写 1 项（C-7）");
+        if (learnedArr.length === 0) issues.push("learned 至少填写 1 项（C-7）");
+
+        lines.push("date: " + dVal);
+        lines.push("review_status: draft");
+        lines.push("source: self-reported");
+        if (energyVal) lines.push("energy: " + Number(energyVal));
+        lines.push("did:" + yamlStrArray(didArr));
+        lines.push("learned:" + yamlStrArray(learnedArr));
+        lines.push("blocked:" + yamlStrArray(blockedArr));
+        lines.push("tomorrow:" + yamlStrArray(tomorrowArr));
+        lines.push("linked_knowledge: []");
+        lines.push("linked_projects: []");
+        lines.push("linked_errors: []");
+        targetPath = "staged/journal/" + yearSeg + "/" + dVal + ".md";
+      } else if (t === "error") {
+        var occDate = (erOccurred && erOccurred.value) || today;
+        var sev = (erSeverity && erSeverity.value) || "medium";
+        var projId = String((erProject && erProject.value) || "").trim().toUpperCase();
+        var sym = String((erSymptom && erSymptom.value) || "").trim();
+        var ctx = String((erContext && erContext.value) || "").trim();
+        var rc = String((erRootCause && erRootCause.value) || "").trim();
+        var fix = String((erFix && erFix.value) || "").trim();
+        var prev = String((erPrevention && erPrevention.value) || "").trim();
+
+        var five = [
+          ["symptom", sym],
+          ["context", ctx],
+          ["root_cause", rc],
+          ["fix", fix],
+          ["prevention", prev],
+        ];
+        five.forEach(function (pair) {
+          if (pair[1].length < 8) {
+            issues.push(pair[0] + " 需不少于 8 个字符（V-016）");
+          }
+        });
+        if (projId && !/^PJ-[A-Z0-9]{2,8}$/.test(projId)) {
+          issues.push("关联项目 ID 需符合 PJ-* 格式");
+        }
+
+        lines.push("occurred: " + occDate);
+        lines.push("severity: " + sev);
+        lines.push("symptom: " + yamlStr(sym));
+        lines.push("context: " + yamlStr(ctx));
+        lines.push("root_cause: " + yamlStr(rc));
+        lines.push("fix: " + yamlStr(fix));
+        lines.push("prevention: " + yamlStr(prev));
+        lines.push("evidence: []");
+        if (projId) lines.push("project: " + yamlStr(projId));
+        targetPath = "staged/errors/" + rawId.toLowerCase() + "-" + slug + ".md";
+      } else if (t === "project") {
+        var pStat = (pjStatus && pjStatus.value) || "active";
+        var role = String((pjRole && pjRole.value) || "").trim();
+        var pStart = (pjStart && pjStart.value) || monthStr;
+        var pEnd = String((pjEnd && pjEnd.value) || "").trim();
+        var stackArr = String((pjStack && pjStack.value) || "")
+          .split(",")
+          .map(function (s) {
+            return s.trim();
+          })
+          .filter(Boolean);
+        var outcomesArr = parseLines(pjOutcomes && pjOutcomes.value);
+
+        if (!role) issues.push("role 承担角色不能为空（C-6）");
+        if (!/^\d{4}-\d{2}$/.test(pStart)) issues.push("period.start 需为 YYYY-MM");
+        if (pEnd && !/^\d{4}-\d{2}$/.test(pEnd)) issues.push("period.end 需为 YYYY-MM 或留空");
+        if (outcomesArr.length === 0) issues.push("outcomes 可验证成果至少填写 1 项（C-6）");
+
+        lines.push("status: " + pStat);
+        lines.push("role: " + yamlStr(role));
+        lines.push("period:");
+        lines.push("  start: " + yamlStr(pStart));
+        lines.push("  end: " + (pEnd ? yamlStr(pEnd) : "null"));
+        lines.push("stack: [" + stackArr.map(yamlStr).join(", ") + "]");
+        lines.push("outcomes:" + yamlStrArray(outcomesArr));
+        lines.push("linked_knowledge: []");
+        lines.push("linked_errors: []");
+        targetPath = "staged/projects/" + rawId.toLowerCase() + "-" + slug + ".md";
+      }
+
+      lines.push("---");
+      lines.push("");
+      lines.push(body || "<!-- 待补充脱敏结构化正文 -->");
+      lines.push("");
+
+      var markdown = lines.join("\n");
+      var v010Hits = scanV010(markdown);
+      return {
+        path: targetPath,
+        filename: targetPath.split("/").pop() || "draft.md",
+        markdown: markdown,
+        issues: issues,
+        v010Hits: v010Hits,
+        summaryLen: summary.length,
+      };
+    }
+
+    function refreshStructuredPreview() {
+      var art = buildStructuredArtifact();
+      if (stSummaryCount) {
+        stSummaryCount.textContent = art.summaryLen + " / 20..200 字";
+      }
+      if (stPathPreview) {
+        stPathPreview.textContent = art.path;
+      }
+      if (stMdPreview) {
+        stMdPreview.textContent = art.markdown;
+      }
+
+      // 更新 V-010 实时雷达
+      if (art.v010Hits.length > 0) {
+        v010Blocked = true;
+        setAlert(
+          v010Radar,
+          "danger",
+          "V-010 敏感信息拦截：检测到疑似【" +
+            art.v010Hits.join("、") +
+            "】！已禁用存入 staged/。请先脱敏移除敏感内容，或切回「快速思考」仅存入私密 inbox/。"
+        );
+      } else {
+        v010Blocked = false;
+        setAlert(
+          v010Radar,
+          "ok",
+          "V-010 敏感信息预检通过：未检测到邮箱、手机号、身份证号、API 密钥或私钥块。"
+        );
+      }
+      syncWriteButtonsState();
+
+      // 更新契约完整性提示
+      if (stContractStatus) {
+        if (art.issues.length > 0) {
+          setAlert(
+            stContractStatus,
+            "info",
+            "待完善契约必填项（存入 staged/ 前需补齐）：" + art.issues.join("；")
+          );
+        } else {
+          stContractStatus.hidden = true;
+        }
+      }
+      return art;
+    }
+
+    // 绑定结构化面板全部输入控件实时刷新
+    if (panelStruct) {
+      panelStruct.addEventListener("input", refreshStructuredPreview);
+      panelStruct.addEventListener("change", refreshStructuredPreview);
+    }
+
+    // 复制与下载离线可用按钮
+    if (btnCopyMd) {
+      btnCopyMd.addEventListener("click", async function () {
+        var art = refreshStructuredPreview();
+        try {
+          await navigator.clipboard.writeText(art.markdown);
+          setAlert(structResult, "ok", "已复制生成的 Markdown 到剪贴板。");
+        } catch (_e) {
+          setAlert(structResult, "info", "当前浏览器限制剪贴板自动写入，请直接从预览框手动全选复制。");
+        }
+      });
+    }
+
+    if (btnDownloadMd) {
+      btnDownloadMd.addEventListener("click", function () {
+        var art = refreshStructuredPreview();
+        var blob = new Blob([art.markdown], { type: "text/markdown;charset=utf-8" });
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement("a");
+        a.href = url;
+        a.download = art.filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        setAlert(structResult, "ok", "已触发下载文件：" + art.filename);
+      });
+    }
+
+    // 存入私有库 staged/
+    if (btnSaveStaged) {
+      btnSaveStaged.addEventListener("click", async function () {
+        var art = refreshStructuredPreview();
+        if (art.v010Hits.length > 0) {
+          setAlert(
+            structResult,
+            "danger",
+            "V-010 拦截生效：内容仍含敏感信息（" + art.v010Hits.join("、") + "），禁止放入 staged/。"
+          );
+          return;
+        }
+        if (art.issues.length > 0) {
+          setAlert(
+            structResult,
+            "danger",
+            "请先补齐契约必填项后再存入 staged/：" + art.issues.join("；")
+          );
+          return;
+        }
+
+        var conn = await ensureVerifiedConn();
+        if (!conn) {
+          setAlert(
+            structResult,
+            "danger",
+            blockedPublic
+              ? "安全阻断：目标仓库不是 Private 私有仓库，已禁止写入！"
+              : "连接未就绪：请先在上方「私有库连接设置」保存并验证有效令牌。"
+          );
+          return;
+        }
+
+        btnSaveStaged.disabled = true;
+        setAlert(structResult, "info", "正在写入私有库 " + art.path + " …");
+
+        try {
+          var apiUrl =
+            "https://api.github.com/repos/" +
+            conn.parsed.encoded +
+            "/contents/" +
+            encodeRepoPath(art.path);
+
+          // 若同名草稿已存在，先取 sha 以支持平滑覆盖更新
+          var existingSha = null;
+          var checkRes = await fetch(
+            apiUrl + "?ref=" + encodeURIComponent(conn.branch),
+            {
+              method: "GET",
+              headers: {
+                Authorization: "Bearer " + conn.token,
+                Accept: "application/vnd.github+json",
+                "X-GitHub-Api-Version": "2022-11-28",
+              },
+            }
+          );
+          if (checkRes.ok) {
+            var existingData = await checkRes.json();
+            if (existingData && existingData.sha) existingSha = existingData.sha;
+          }
+
+          var payload = {
+            message: "stage(" + ((stType && stType.value) || "content") + "): " + art.filename,
+            content: utf8ToBase64(art.markdown),
+            branch: conn.branch,
+          };
+          if (existingSha) payload.sha = existingSha;
+
+          var putRes = await fetch(apiUrl, {
+            method: "PUT",
+            headers: {
+              Authorization: "Bearer " + conn.token,
+              Accept: "application/vnd.github+json",
+              "Content-Type": "application/json",
+              "X-GitHub-Api-Version": "2022-11-28",
+            },
+            body: JSON.stringify(payload),
+          });
+
+          if (!putRes.ok) {
+            setAlert(
+              structResult,
+              "danger",
+              "写入 staged/ 失败（HTTP " + putRes.status + "）：请检查令牌 Contents 读写权限。"
+            );
+            return;
+          }
+
+          var putOut = await putRes.json();
+          var stagedUrl =
+            (putOut && putOut.content && putOut.content.html_url) ||
+            "https://github.com/" +
+              conn.parsed.full +
+              "/blob/" +
+              encodeURIComponent(conn.branch) +
+              "/" +
+              art.path;
+
+          setAlert(
+            structResult,
+            "ok",
+            "脱敏草稿已存入私有库（可继续点击「一键触发同步 PR 至公开知识站」）：",
+            { url: stagedUrl, label: art.path + " ↗" }
+          );
+        } catch (_e) {
+          setAlert(structResult, "danger", "网络请求异常，请检查网络连接后重试。");
+        } finally {
+          syncWriteButtonsState();
+        }
+      });
+    }
+
+    // 一键触发私有库 promote-to-public.yml 同步工作流
+    if (btnDispatchSync) {
+      btnDispatchSync.addEventListener("click", async function () {
+        var conn = await ensureVerifiedConn();
+        if (!conn) {
+          setAlert(
+            structResult,
+            "danger",
+            blockedPublic
+              ? "安全阻断：目标仓库不是 Private 私有仓库！"
+              : "连接未就绪：请先在上方「私有库连接设置」保存并验证有效令牌。"
+          );
+          return;
+        }
+
+        btnDispatchSync.disabled = true;
+        setAlert(structResult, "info", "正在请求触发私有库 promote-to-public.yml 同步工作流…");
+
+        try {
+          var dispatchUrl =
+            "https://api.github.com/repos/" +
+            conn.parsed.encoded +
+            "/actions/workflows/promote-to-public.yml/dispatches";
+          var res = await fetch(dispatchUrl, {
+            method: "POST",
+            headers: {
+              Authorization: "Bearer " + conn.token,
+              Accept: "application/vnd.github+json",
+              "Content-Type": "application/json",
+              "X-GitHub-Api-Version": "2022-11-28",
+            },
+            body: JSON.stringify({ ref: conn.branch }),
+          });
+
+          if (res.status === 204 || res.ok) {
+            setAlert(
+              structResult,
+              "ok",
+              "已成功触发受控同步工作流！稍后请前往公开知识库审阅并确认合并草稿 PR：",
+              {
+                url: "https://github.com/cvcingcvc-code/personal-knowledge-os/pulls",
+                label: "查看公开知识站 PR 列表 ↗",
+              }
+            );
+          } else {
+            var msg =
+              res.status === 403
+                ? "触发被拒绝（HTTP 403）：请为 Fine-Grained Token 补充该私有库的 Actions: Read and write 权限，或直接在私有库 Actions 页面手动点 Run workflow。"
+                : res.status === 404
+                  ? "未找到 promote-to-public.yml 工作流（HTTP 404）：请确认私有库已完成同步工作流初始化，且令牌具备 Actions 权限。"
+                  : "触发失败（HTTP " + res.status + "）。";
+            setAlert(structResult, "danger", msg);
+          }
+        } catch (_e) {
+          setAlert(structResult, "danger", "网络请求异常，无法触发同步工作流。");
+        } finally {
+          syncWriteButtonsState();
+        }
+      });
+    }
+
+    // 启动时恢复本地连接、快速草稿与初始预览
+    loadSavedConn();
+    loadQuickDraft();
+    updateQuickPreviewAndCache(false);
+    refreshStructuredPreview();
+  })();
+</script>

@@ -8,11 +8,15 @@ import Footer from "../components/Footer.astro";
 interface Props {
   title: string;
   description?: string;
+  noindex?: boolean;
+  pagefindIgnore?: boolean;
 }
 
 const {
   title,
   description = "Personal Knowledge OS — 个人知识库：知识、项目、复盘与错误经验，可追溯、可搜索。",
+  noindex = false,
+  pagefindIgnore = false,
 } = Astro.props;
 
 const fullTitle =
@@ -27,12 +31,17 @@ const fullTitle =
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="description" content={description} />
+    {noindex && <meta name="robots" content="noindex, nofollow" />}
     <title>{fullTitle}</title>
   </head>
   <body>
     <div class="site-shell">
       <Header />
-      <main class="site-main">
+      <main
+        class="site-main"
+        data-pagefind-body={pagefindIgnore ? undefined : ""}
+        data-pagefind-ignore={pagefindIgnore ? "all" : undefined}
+      >
         <div class="container">
           <slot />
         </div>
