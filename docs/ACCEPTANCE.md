@@ -18,7 +18,7 @@
 每个验收项必须留下**至少一种**可复查证据：
 
 1. 命令 + 完整输出（粘进验收文档，不截断关键行）。
-2. CI 运行链接（`github.com/cvcingcvc-code/141/actions/runs/<id>`）。
+2. CI 运行链接（`github.com/cvcingcvc-code/personal-knowledge-os/actions/runs/<id>`）。
 3. 截图路径（存 `qa/evidence/<里程碑>/<编号>.png`，截图里要能看到 URL 或时间）。
 4. 可被第三人复现的操作步骤序列。
 
@@ -61,7 +61,7 @@
 - [ ] 正常 PR → 绿灯
 - [ ] **分支保护自证**：A1 用自己账号完成一次"PR → CI 绿 → 合并"，成功且有 run 链接（证明规则没锁死单人项目）
 - [ ] 直推 main 被拒（贴 `git push` 报错原文）
-- [ ] `https://cvcingcvc-code.github.io/141/` 返回 200 且样式正常
+- [ ] `https://cvcingcvc-code.github.io/personal-knowledge-os/` 返回 200 且样式正常
 - [ ] 导入脚本产物默认 `draft` 且不可发布
 
 ### M5 最终验收

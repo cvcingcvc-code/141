@@ -1,6 +1,6 @@
 # TASKS.md — 任务拆分与并行计划
 
-> 契约：`docs/CONTRACTS.md` v1.0.0-rc4（Wave 1 后基线）
+> 契约：`docs/CONTRACTS.md` v1.0.1（`RFC-001` 仓库改名路径同步；Wave 1 rc4 基线向后兼容）
 > 纪律：每个任务 = 一个分支 = 一个 worktree = 一个 PR。任务未列出的文件，不得修改。
 > **写权限只在 `AGENTS.md §3` 定义一处**，本文件不复述（rc1 的 P1-3 就来自两份表打架）。
 
@@ -129,7 +129,7 @@ Wave 3              ── T4.3 导入流程、T4.4 部署、T5.1/T5.2 验收
 ### T4.4 部署验收
 - 分支：`feat/a4-deploy`
 - 产出：Pages 首次成功部署、公开 URL、部署日志
-- DoD：`https://cvcingcvc-code.github.io/141/` 返回 200 且样式/链接正常（非裸 HTML）。
+- DoD：`https://cvcingcvc-code.github.io/personal-knowledge-os/` 返回 200 且样式/链接正常（非裸 HTML）。
 
 ## 6. Agent 5 — 独立 QA（只读业务代码）
 
@@ -306,7 +306,7 @@ Wave 3              ── T4.3 导入流程、T4.4 部署、T5.1/T5.2 验收
 | --- | --- | --- | --- |
 | T4.3 复盘导入（draft 默认、仓库外草稿、授权门控、路径安全） | #26 | `00ed1b3` | ✅ 已合并 |
 | T3.3 阅读体验与移动端可读性 | #27 | `69a38c5` | ✅ 已合并 |
-| T5.2 独立验收（Wave 3A） | — | — | ⏳ 待 A5 独立执行，A1 不代签 |
+| T5.2 独立验收（Wave 3A） | #25 | `24eed1a` | ✅ 已合并（按 `INC-002` 仅 squash 合入，新 main 三层隐私复测 exit 0） |
 | A2 笔记采集字段核对 | — | — | ⏳ 字段清单已覆盖 journal 五要素；新增模板后需收敛重复项（见 §14.3） |
 
 ### 14.1 明天处理真实笔记的命令（已实测）
@@ -344,5 +344,15 @@ npm run validate
 
 1. **重复模板**：`src/content/intake/journal-template.md.template`（A2 的素材采集表）与
    `templates/journal-template.md`（A4 的入库模板）并存，用途不同但名字相近，需在 A2 目录里一句话说明“哪个是采集表、哪个是入库模板”。
-2. **A5 未签字**：Wave 3A 的独立验收仍需 A5 在独立窗口执行（含 360/768/1280 与对比度复测）。
+2. ~~**A5 未签字**~~：已由 PR #25（`24eed1a`）完成 Wave 3A 独立验收并按 `INC-002` 仅 squash 合入关闭。
 3. **错误经验无导入脚本**：只有模板，手工填写（T4.3 范围内，不扩）。
+
+## 15. W0 安全收尾与 W1 仓库改名迁移（2026-11-18，基线 `c6fec07` → `24eed1a`）
+
+| 任务 | 负责人 | 分支 / PR | 状态 |
+| --- | --- | --- | --- |
+| W0-A5 / W0-A1：PR #25 隐私口径对齐与 `INC-002` squash 收尾 | A5 + A1 | #25 → `24eed1a` | ✅ 已合并并完成新 main 三层隐私复测（L1/L2/L3 均 0，exit 0） |
+| W1-1：主配置 `base: '/personal-knowledge-os'`、RFC-001 与权威文档迁移 | A1 | `chore/rename-paths` | 🔄 进行中（仅提 PR，待用户确认合并） |
+| W1-2：跨区旧仓库外链与脚本默认 `--base` 同步 | A3 / A2 / A5 | `feat/a3-rename-paths` / `feat/a2-rename-paths` / `qa/a5-rename-paths` | ⏳ 待 W1-1 合入后各自独立分支提交 |
+| W2：真实内容素材核对与授权入库 | A2 | `feat/a2-*` | ⛔ 待用户提供五类真实素材与授权 |
+| W3：首次公开部署预检与线上端到端验收 | A4 + A5 + 用户 | — | ⛔ 待 W1/W2 完成及用户部署批准 |

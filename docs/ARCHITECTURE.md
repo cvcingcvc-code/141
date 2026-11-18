@@ -43,7 +43,7 @@
 
 - Pagefind 索引在 `postbuild` 生成，因此**搜索只能验证构建产物**，不能只跑 dev server 验收（写进 ACCEPTANCE）。
 - Astro content layer 不校验"关联 id 是否存在"（zod 只能校验形状），该项由 `validate` 脚本以自定义规则实现。
-- GitHub Pages 子路径部署（`/141/`），所有内部链接必须走 `base` 前缀，禁止硬编码根路径 `/`。
+- GitHub Pages 子路径部署（`/personal-knowledge-os/`），所有内部链接必须走 `base` 前缀，禁止硬编码根路径 `/`。
 
 ## 3. 目录结构
 
@@ -51,7 +51,7 @@
 > 此处只描述结构，避免出现"两份权限表互相矛盾"的问题（这正是 rc1 的 P1-3）。
 
 ```
-141/
+personal-knowledge-os/（本机集成目录沿用 F:\141）
 ├─ AGENTS.md
 ├─ README.md
 ├─ .gitattributes
@@ -108,10 +108,10 @@
                  ├─ 页面渲染（仅 published:true 且 journal.status=approved）
                  ├─ scripts/build-data.mjs → dist/data/content.json
                  └─ postbuild: pagefind --site dist  → dist/pagefind/**
-                          ↓
+                          ↓（首次公开部署验收前仅手动 workflow_dispatch + DEPLOY 确认门控）
                  actions/upload-pages-artifact → deploy-pages
                           ↓
-                 https://cvcingcvc-code.github.io/141/
+                 https://cvcingcvc-code.github.io/personal-knowledge-os/
 ```
 
 **构建期过滤规则（唯一实现处，不得散落到组件里）**：
@@ -149,7 +149,7 @@
 
 ### 许可证（D4）
 
-- **代码**：MIT，`LICENSE` 文件在 T1.2 与工具链一起落地（本轮不加文件，避免超出"仅文档修订"的范围）。
+- **代码**：MIT（见根目录 `LICENSE`）。
 - **原创知识内容**：默认保留版权（© 作者，All rights reserved），**不自动套用 CC 等开放许可**。若某条内容要开放，单独在条目中声明。
 - 第三方引用（书摘、文章要旨）遵守原许可，`sources` 里必须能追到出处；不整段搬运他人全文。
 

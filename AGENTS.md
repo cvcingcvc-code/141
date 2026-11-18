@@ -7,9 +7,9 @@
 
 个人知识 OS：`profile / knowledge / projects / journal / errors` 五类 Markdown 内容 → 校验 → 静态站点 → GitHub Pages 全文搜索。
 
-- 仓库：`https://github.com/cvcingcvc-code/141`
-- 站点：`https://cvcingcvc-code.github.io/141/`
-- 本地主仓库：`F:\141`（仅集成）；开发副本：`F:\141-wt\{a2,a3,a4,a5}`
+- 仓库：`https://github.com/cvcingcvc-code/personal-knowledge-os`（原名 `141`）
+- 站点：`https://cvcingcvc-code.github.io/personal-knowledge-os/`
+- 本地主仓库：`F:\141`（仅集成，沿用原本地目录名不迁移）；开发副本：`F:\141-wt\{a1,a2,a3,a4,a5}`
 - 技术栈：Astro 5 + zod + Pagefind + 原生 CSS + GitHub Actions（见 `docs/ARCHITECTURE.md`）
 
 ## 1. 不可违反的硬规则
@@ -147,6 +147,7 @@ node qa/scripts/*.mjs  # QA 脚本，不经 package.json
 | 多 worktree 共用 node_modules | 依赖版本错乱 | 每个 worktree 各自 `npm ci` |
 | 目录含中文/空格 | Windows 下部分脚本路径出错 | 仓库路径固定 `F:\141`、`F:\141-wt\<角色>`，不要改成中文目录 |
 | 本地 `npm run build` 中途失败、且无 `dist/data` / `dist/pagefind` | astro 清理旧 `dist` 被 safe-delete 拒绝（常见原因：静态服务器仍占用 dist 内文件） | 先停掉 preview/临时服务器，或 `rm -rf dist` 后再 build；CI 是干净工作区，不受影响 |
+| 文档写进测试明文 PII | `privacy-scan` 在分支历史持续 exit 1（见 `docs/incidents/INC-002.md`） | **任何 `docs/**` 与 `qa/**` 不得出现形似身份证/手机号/真实邮箱的完整字符串**，也不公开低熵值 SHA-256，一律只写类别与掩码（如 `138****78`） |
 
 ## 10. 文档地图
 
