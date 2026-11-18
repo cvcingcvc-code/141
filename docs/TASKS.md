@@ -356,4 +356,17 @@ npm run validate
 | W1-2：跨区旧仓库外链、校验回退、采集收敛与 QA 脚本默认 `--base` 同步 | A3 / A2 / A5 | #35 `76371ea` / #36 `aaed0be` / #37 `57d9dcc` | ✅ 全部独立分支按 squash 合入 |
 | W2：五类共 8 条真实内容起草、所有者逐条审阅批准与发布上站 | A2 + 用户 | #38 → `664a01d` | ✅ 已合并（`validate` 0 errors 0 warnings，15 页构建，5 条示例 0 泄漏） |
 | W3-1：部署前全量预检、开启 Pages `workflow` 源与首次公开部署 | A4 + 用户 | deploy run `44263098409` | ✅ 已上线 https://cvcingcvc-code.github.io/personal-knowledge-os/ （HTTP 200） |
-| W3-2：线上真实 URL 端到端独立验收与仓库使用声明 | A5 + A1 | `qa/a5-v0.1-acceptance` / `docs/usage-notice` | 🔄 PR 交付审阅中 |
+| W3-2：线上真实 URL 端到端独立验收与仓库使用声明 | A5 + A1 | #39 `6128e0c` / #40 `db0b0c2` | ✅ v0.1 正式收官闭环 |
+
+## 16. Wave 4（v0.2 `RFC-002`：双库隔离在线思考工作台与受控同步）
+
+> 依据：`docs/rfc/RFC-002-dual-repo-thought-capture.md`（所有者已于 2026-11-18 批准）
+
+| 任务 | 负责人 | 分支 / 交付物 | 状态 |
+| --- | --- | --- | --- |
+| T6.0：批准 `RFC-002` 并升级 `CONTRACTS.md` 至 v1.1.0 | A1 | `docs/rfc-002-dual-repo-capture` (#41) | 🔄 合入中 |
+| T6.1：创建并初始化私有思考仓库 `cvcingcvc-code/personal-knowledge-vault`（Private）及同步工作流 | A1 + A4 | 独立私有仓 `inbox/` + `staged/` + `promote-to-public.yml` + Issue Form | ⏳ 进行中 |
+| T6.2：`STATIC_ROUTES` 登记 `/capture/` 并同步契约版本号 | A2 | `feat/a2-v02-capture-route` | ⏳ 待 T6.0 合入 |
+| T6.3：实现 `/capture/` 纯静态在线思考工作台、页脚低调入口与 `.sources__ref` P2 折行修复 | A3 | `feat/a3-v02-capture-ui` | ⏳ 待 T6.0 合入 |
+| T6.4：更新 `docs/IMPORT.md` 双库在线捕获与最小权限令牌配置手册 | A4 | `feat/a4-v02-sync-docs` | ⏳ 待 T6.0 合入 |
+| T6.5：`/capture/` 9 固定路由测链、前端 V-010 拦截、Pagefind 隔离与线上部署验收 | A5 + A4 | `qa/a5-v02-capture-acceptance` | ⏳ 待 T6.2–T6.4 合入 |

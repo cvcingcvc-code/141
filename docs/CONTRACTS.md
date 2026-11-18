@@ -1,9 +1,9 @@
-# CONTRACTS.md — 统一接口契约（v1.0.1）
+# CONTRACTS.md — 统一接口契约（v1.1.0）
 
 > **这是本项目唯一的跨模块协议。变更必须走 `docs/rfc/`，由主 Agent 裁决并升版本号。**
 > 本文件与代码冲突时，**以本文件为准**，代码视为缺陷。
 
-契约版本：`1.0.1`（2026-11-18，见 `docs/rfc/RFC-001-repo-rename-base.md`：同步仓库改名 `personal-knowledge-os` 的示例 URL 与 `base` 示例值，无字段/路由/产物形状变更；历史 rc4 基线见 C-16）
+契约版本：`1.1.0`（2026-11-18，见 `docs/rfc/RFC-002-dual-repo-thought-capture.md`：向后兼容新增第 13 条路由 `/capture/` 纯静态在线思考捕获工作台及私有库 `personal-knowledge-vault` 受控同步边界；历史版本记录见 C-16）
 契约 ID 前缀约定：`C-*` 为契约条款，`V-*` 为校验错误，`W-*` 为校验警告。QA 缺陷单必须引用这些编号。
 
 ---
@@ -187,6 +187,7 @@ v0.1 只做"读一条内容"必需的页面，聚合类页面延后。所有路�
 | 10 | `/errors/[id]/` | 错误详情 | 单条 |
 | 11 | `/search/` | 全文搜索 | Pagefind |
 | 12 | `/404.html` | 未找到（GitHub Pages 固定文件名） | — |
+| 13 | `/capture/` | 在线思考捕获工作台（v0.2 `RFC-002`，`noindex` + `data-pagefind-ignore`，页脚低调入口；仅在站主本人本地令牌下直连私有库 API） | 纯前端工具页（零服务端凭据） |
 
 **v0.1 明确不做（延后至 v0.2，本轮不得实现）**：
 `/knowledge/tag/[tag]/`、`/knowledge/domain/[domain]/`、标签聚合、领域聚合、知识图谱渲染、`graph.json`、RSS、分页、第三方数据同步。
@@ -317,6 +318,7 @@ v0.1 只做"读一条内容"必需的页面，聚合类页面延后。所有路�
 | 1.0.0-rc3 | 2026-11-06 | 已合并 | 安全修正：`published` 默认 `false`；`published_by` 必填且须人工标识；明确"字段是证据，门禁是用户确认合入 main" |
 | 1.0.0-rc4 | 2026-11-06 | 已合并 | C-11 增补 `npm test` / `npm run typecheck` / `npm run sync`；C-17 的 `feat/a2-` 行补 `src/content.config.ts`（A4 上报的归属差异）；无字段/路由/产物变更，向后兼容 |
 | 1.0.1 | 2026-11-18 | 已批准 | `RFC-001`：同步仓库改名 `personal-knowledge-os` 的示例 URL、C-10 `base` 示例值与 C-18 仓库标识；无字段/路由/校验规则变更 |
+| 1.1.0 | 2026-11-18 | 已批准 | `RFC-002`：新增第 13 条静态工具路由 `/capture/`（在线思考捕获工作台，不污染 Pagefind 索引）与 C-18 私有远端库 `cvcingcvc-code/personal-knowledge-vault` 双库隔离边界 |
 
 ## C-17 分支改动范围门禁（**P1-4**）
 
@@ -351,7 +353,7 @@ AGENTS.md 的文字约束不构成权限门禁。CI 必须执行 `npm run scope:
 | --- | --- | --- | --- |
 | L1 可公开 | 已脱敏的知识、项目、可公开复盘、错误经验 | `content/**` | ✅ |
 | L2 暂不发布 | 已脱敏但暂不上站 | `content/**` + `published: false` | ✅ |
-| L3 禁止入库 | 私密复盘原文、他人隐私、健康/家庭细节、未脱敏截图、凭据、内部资料 | **仓库外私密库** `F:\141-vault\`（不进 git、不进 worktree、不打包上传） | ❌ |
+| L3 禁止入库 | 私密复盘原文、他人隐私、健康/家庭细节、未脱敏截图、凭据、内部资料 | **仓库外私密库**：本机 `F:\141-vault\` 或 GitHub **Private** 私有仓库 `cvcingcvc-code/personal-knowledge-vault`（绝不进本公开仓库 git、不打包进 `dist/`） | ❌ |
 
 ### 引用方式
 
