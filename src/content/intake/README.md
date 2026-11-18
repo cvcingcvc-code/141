@@ -15,6 +15,8 @@
 
 ## 2. 与 A4 `templates/**` 的边界（避免两份模板打架）
 
+> **一句话区分**：`src/content/intake/*`（含本文件及 `journal-template.md.template`）为 A2 面向用户的素材采集核对表，不直接入库；`templates/journal-template.md` 为 A4 的正式入库骨架模板。
+
 - **A4**：可填空的"录入文件"（新建一条 journal / error 的骨架文件），服务 T4.3 的导入流程。
 - **本目录**：字段级"采集与核对清单"，服务"用户给素材 → 我结构化 → 校验 → 用户确认"这一步，不产出可填空条目。
 - 两者都不得复制 `schema.ts` 的规则为第二份真相源：本目录只写"该准备什么"，判定仍由 `scripts/validate-content.mjs` 执行。

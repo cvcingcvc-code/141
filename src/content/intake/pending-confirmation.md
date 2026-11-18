@@ -7,9 +7,9 @@
 
 | 项 | 事实 | 复查方式 |
 | --- | --- | --- |
-| 内容条目 | `content/` 共 6 条，全部 `sample: true` 且 `published: false`（profile 1 / knowledge 2 / projects 1 / journal 1（draft）/ errors 1） | `npm run validate`、`git ls-tree -r origin/main -- content` |
+| 内容条目 | `content/` 共 7 条（6 条 `sample: true` + 1 条未发布真实知识 `KB-ENG-003`，全部未上站：profile 1 / knowledge 3 / projects 1 / journal 1（draft）/ errors 1） | `npm run validate`、`git ls-tree -r origin/main -- content` |
 | 站点可读条目 | **0 条**：`getAllVisible()` 过滤后为空 | `npm test` 中「真实样本全部未发布」用例 |
-| 校验状态 | `0 errors, 1 warnings`（`W-002`：示例 6/6 > 50%） | `npm run validate` |
+| 校验状态 | `0 errors, 1 warnings`（`W-002`：示例 6/7 > 50%） | `npm run validate` |
 | T2.2 DoD | **未达成**：五类各 ≥1 真实条目、`W-002` 消失，都依赖 D1 | `docs/TASKS.md §3 T2.2` |
 
 不达成的原因不是工具链问题，而是**没有任何一条内容是我有资格替你写的**：

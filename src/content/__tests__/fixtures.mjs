@@ -71,7 +71,7 @@ period:
 stack: [astro]
 links:
   - label: Repository
-    url: https://github.com/cvcingcvc-code/141
+    url: https://github.com/cvcingcvc-code/personal-knowledge-os
 outcomes:
   - 基线结果：可被第三人复现的验证动作
 linked_knowledge: []
