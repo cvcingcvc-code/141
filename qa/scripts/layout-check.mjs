@@ -7,7 +7,7 @@
  * 不是「看起来没问题」。同时抓取 title / h1 作为页面可读性证据。
  *
  * 用法：
- *   node qa/scripts/layout-check.mjs [--base http://localhost:4321/141/]
+ *   node qa/scripts/layout-check.mjs [--base http://localhost:4321/personal-knowledge-os/]
  *                                   [--urls /,/404.html] [--views 360,768,1280]
  *                                   [--chrome <chrome 可执行路径>]
  *
@@ -32,7 +32,7 @@ const CHROME_CANDIDATES = [
 
 function parseArgs(argv) {
   const a = {
-    base: 'http://localhost:4321/141/',
+    base: 'http://localhost:4321/personal-knowledge-os/',
     urls: ['/', '/404.html'],
     views: [360, 768, 1280],
     chrome: CHROME_CANDIDATES.find((p) => existsSync(p)) || null,

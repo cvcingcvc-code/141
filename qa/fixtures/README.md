@@ -7,7 +7,7 @@
 ## 使用方式
 
 ```bash
-git clone https://github.com/cvcingcvc-code/141.git /tmp/141-qa-fixture
+git clone https://github.com/cvcingcvc-code/personal-knowledge-os.git /tmp/141-qa-fixture
 cp qa/fixtures/<case>/<文件> /tmp/141-qa-fixture/content/<对应目录>/
 cd /tmp/141-qa-fixture && npm ci && npm run validate
 ```

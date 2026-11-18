@@ -14,7 +14,7 @@
  *   （第 N 个关键词对应第 N 个期望路径；用 * 表示"不校验具体路径，只要 ≥1 命中"）
  *
  * 用法：
- *   node qa/scripts/search-probe.mjs --base http://localhost:4321/141/ \
+ *   node qa/scripts/search-probe.mjs --base http://localhost:4321/personal-knowledge-os/ \
  *        --keywords "鲸落九百零一,鲸落九百零二" --expect "/knowledge/kb-eng-901/,/projects/pj-e2e/"
  *
  * 依赖：Node 22（fetch + WebSocket）+ 系统 Chrome/Edge。只读站点。
@@ -38,7 +38,7 @@ const CHROME_CANDIDATES = [
 
 function parseArgs(argv) {
   const a = {
-    base: 'http://localhost:4321/141/',
+    base: 'http://localhost:4321/personal-knowledge-os/',
     keywords: ['鲸落九百零一', '鲸落九百零二', '鲸落九百零三', '鲸落九百零四', '探针'],
     expect: ['/knowledge/kb-eng-901/', '/projects/pj-e2e/', '/journal/2026-11-05/', '/errors/er-20261105-99/', '*'],
     chrome: CHROME_CANDIDATES.find((p) => existsSync(p)) || null,
@@ -161,7 +161,7 @@ async function main() {
       let firstOk = null;
       if (firstHref) {
         try {
-          // Pagefind 返回的 url 是相对路径（如 /141/xxx/），须以 base 解析为绝对 URL
+          // Pagefind 返回的 url 是相对路径（如 /personal-knowledge-os/xxx/），须以 base 解析为绝对 URL
           let abs = new URL(firstHref, args.base).href;
           if (new URL(abs).hostname === 'localhost') abs = abs.replace('://localhost', '://[::1]');
           const r = await fetch(abs);

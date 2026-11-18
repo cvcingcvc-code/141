@@ -34,15 +34,15 @@ qa/
 npm ci && npm run build && npm run preview
 
 # 2. 路由探测（固定 8 条 + 动态有效/无效 ID + 站内链接爬取）
-node qa/scripts/link-check.mjs --base http://localhost:4321/141/
+node qa/scripts/link-check.mjs --base http://localhost:4321/personal-knowledge-os/
 #    M2 门禁用 --strict
-node qa/scripts/link-check.mjs --base http://localhost:4321/141/ --strict
+node qa/scripts/link-check.mjs --base http://localhost:4321/personal-knowledge-os/ --strict
 
 # 3. 隐私三层扫描（默认扫当前仓库；可指定 --repo / --dist / --history N）
 node qa/scripts/privacy-scan.mjs
 
 # 4. 多视口布局实测（360/768/1280，需系统 Chrome/Edge）
-node qa/scripts/layout-check.mjs --base http://localhost:4321/141/
+node qa/scripts/layout-check.mjs --base http://localhost:4321/personal-knowledge-os/
 
 # 5. 数据隔离 + 产物一致性 + 关键词命中（T3.2/T4.2 落地后可用，否则 BLOCKED）
 node qa/scripts/data-isolation.mjs
