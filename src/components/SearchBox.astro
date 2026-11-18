@@ -9,7 +9,7 @@
  *
  * 实现说明：脚本用 `is:inline` 不经 Vite 打包。
  * 原因：Vite 会把动态 `import()` 包进 preload 助手并按 base 再前缀一次，
- * 对已经是 "/141/pagefind/..." 的绝对路径会变成 "/141//141/pagefind/..." → 404。
+ * 对已经是 "/personal-knowledge-os/pagefind/..." 的绝对路径会变成 "/personal-knowledge-os//personal-knowledge-os/pagefind/..." → 404。
  * 这里直接使用浏览器原生 import()，路径完全由 BASE_URL 计算，行为可预测。
  */
 interface Props {

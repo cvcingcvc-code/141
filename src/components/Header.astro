@@ -1,7 +1,7 @@
 ---
 // Header — 站点页头：站点名 + 主导航
-// 所有链接经 import.meta.env.BASE_URL 拼接，兼容 GitHub Pages 子路径 /141/
-// BASE_URL 等于配置原值 "/141"（无尾斜杠），统一归一化为 "/141/" 再拼接
+// 所有链接经 import.meta.env.BASE_URL 拼接，兼容 GitHub Pages 子路径 /personal-knowledge-os/
+// BASE_URL 等于配置原值 "/personal-knowledge-os"（无尾斜杠），统一归一化为 "/personal-knowledge-os/" 再拼接
 const rawBase = import.meta.env.BASE_URL;
 const base = rawBase.endsWith("/") ? rawBase : `${rawBase}/`;
 const pathname = Astro.url.pathname;
