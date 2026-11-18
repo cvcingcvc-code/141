@@ -347,12 +347,13 @@ npm run validate
 2. ~~**A5 未签字**~~：已由 PR #25（`24eed1a`）完成 Wave 3A 独立验收并按 `INC-002` 仅 squash 合入关闭。
 3. **错误经验无导入脚本**：只有模板，手工填写（T4.3 范围内，不扩）。
 
-## 15. W0 安全收尾与 W1 仓库改名迁移（2026-11-18，基线 `c6fec07` → `24eed1a`）
+## 15. W0–W3 收尾、内容发布与首次公开上线记录（2026-11-18，基线 `c6fec07` → `664a01d`）
 
-| 任务 | 负责人 | 分支 / PR | 状态 |
+| 任务 | 负责人 | 分支 / PR / Run | 状态 |
 | --- | --- | --- | --- |
 | W0-A5 / W0-A1：PR #25 隐私口径对齐与 `INC-002` squash 收尾 | A5 + A1 | #25 → `24eed1a` | ✅ 已合并并完成新 main 三层隐私复测（L1/L2/L3 均 0，exit 0） |
-| W1-1：主配置 `base: '/personal-knowledge-os'`、RFC-001 与权威文档迁移 | A1 | `chore/rename-paths` | 🔄 进行中（仅提 PR，待用户确认合并） |
-| W1-2：跨区旧仓库外链与脚本默认 `--base` 同步 | A3 / A2 / A5 | `feat/a3-rename-paths` / `feat/a2-rename-paths` / `qa/a5-rename-paths` | ⏳ 待 W1-1 合入后各自独立分支提交 |
-| W2：真实内容素材核对与授权入库 | A2 | `feat/a2-*` | ⛔ 待用户提供五类真实素材与授权 |
-| W3：首次公开部署预检与线上端到端验收 | A4 + A5 + 用户 | — | ⛔ 待 W1/W2 完成及用户部署批准 |
+| W1-1：主配置 `base: '/personal-knowledge-os'`、RFC-001 与权威文档迁移 | A1 | #34 → `90e20c6` | ✅ 已合并 |
+| W1-2：跨区旧仓库外链、校验回退、采集收敛与 QA 脚本默认 `--base` 同步 | A3 / A2 / A5 | #35 `76371ea` / #36 `aaed0be` / #37 `57d9dcc` | ✅ 全部独立分支按 squash 合入 |
+| W2：五类共 8 条真实内容起草、所有者逐条审阅批准与发布上站 | A2 + 用户 | #38 → `664a01d` | ✅ 已合并（`validate` 0 errors 0 warnings，15 页构建，5 条示例 0 泄漏） |
+| W3-1：部署前全量预检、开启 Pages `workflow` 源与首次公开部署 | A4 + 用户 | deploy run `44263098409` | ✅ 已上线 https://cvcingcvc-code.github.io/personal-knowledge-os/ （HTTP 200） |
+| W3-2：线上真实 URL 端到端独立验收与仓库使用声明 | A5 + A1 | `qa/a5-v0.1-acceptance` / `docs/usage-notice` | 🔄 PR 交付审阅中 |
