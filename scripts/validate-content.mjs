@@ -44,7 +44,7 @@ const MIN_BODY_CHARS = 80;
 /** W-002：sample 占比超过多少告警 */
 const SAMPLE_RATIO_LIMIT = 0.5;
 /** base 缺省值；实际优先读 astro.config.mjs */
-const DEFAULT_BASE = '/141';
+const DEFAULT_BASE = '/personal-knowledge-os';
 
 /* ------------------------------------------------------------------ *
  * V-010 敏感信息（对所有文件生效，含 published:false 与 draft）
@@ -441,7 +441,7 @@ function buildRouteSet(entries, base) {
     if (!isVisibleEntry({ data: e.data })) continue;
     set.add(pathForEntry(e.expectedType, e.data.id));
   }
-  // 允许 base 形式（/141/xxx/）与根形式（/xxx/）都命中：routeSet 统一存不含 base 的形式
+  // 允许 base 形式（/personal-knowledge-os/xxx/）与根形式（/xxx/）都命中：routeSet 统一存不含 base 的形式
   if (base && base !== '/') {
     for (const r of [...set]) set.add(r);
   }
