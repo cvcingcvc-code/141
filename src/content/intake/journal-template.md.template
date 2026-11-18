@@ -1,5 +1,7 @@
 # T2.2 真实内容采集模板（A2 / 状态：BLOCKED-D1）
 
+> **边界说明**：`src/content/intake/*`（含本文件）为 A2 面向用户的素材采集核对表，不直接入库；`templates/journal-template.md` 为 A4 的正式入库骨架模板。
+
 本文件不是内容条目。扩展名刻意用 `.md.template`（不以 `.md` 结尾）：
 若用 `.md`，`scripts/validate-content.mjs` 会把 `content/` 根目录文件当作条目，
 按 C-1 报 V-012；本文件因此不进 content collections、不进构建产物、不进 content.json、不进搜索索引。

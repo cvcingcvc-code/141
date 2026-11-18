@@ -188,7 +188,7 @@ domain: engineering
 status: seed
 confidence: low
 sources: []
-related: []`, '点这里 [一个不存在的页面](/141/knowledge/not-here/)'),
+related: []`, '点这里 [一个不存在的页面](/personal-knowledge-os/knowledge/not-here/)'),
   });
 
   const result = validateContent(stale);

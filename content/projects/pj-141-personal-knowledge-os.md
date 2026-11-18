@@ -16,7 +16,7 @@ period:
 stack: [astro, zod, markdown, github-actions]
 links:
   - label: Repository
-    url: https://github.com/cvcingcvc-code/141
+    url: https://github.com/cvcingcvc-code/personal-knowledge-os
 outcomes:
   - 五类内容共用一份 zod 契约，非法条目在 PR 阶段被 V-* 规则拦下
   - 内容 → 校验 → 静态站 → 全文搜索 → 部署，全链路无运行时依赖
@@ -44,4 +44,4 @@ linked_errors: []
 - 校验边界见 `KB-ENG-002`（Schema 校验只能证明形状合规）：结构合规 ≠ 内容为真。
 
 > 正文刻意不写 Markdown 站内链接：v0.1 的详情页链接由页面按 `id` 生成（`getProjectById` + `linked_knowledge`），
-> 在正文里硬编码 `/141/knowledge/xxx/` 只会在条目未发布时变成必然 404（`W-005`）。
+> 在正文里硬编码 `/personal-knowledge-os/knowledge/xxx/` 只会在条目未发布时变成必然 404（`W-005`）。
