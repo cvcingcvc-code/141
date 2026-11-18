@@ -12,7 +12,7 @@ main ──●─────────────────●────
            ●─● feat/a3-shell ── ...
 ```
 
-- `main` 永远可构建、可部署。合入即发布。
+- `main` 永远可构建、可部署（首次公开部署验收前 `deploy.yml` 保持手动确认门控，验收获批后才恢复自动发布）。
 - 分支生命周期短（一个任务一个分支），合并后删除。
 - 不做 `develop` / `release` 分支：单人 + 静态站，多分支层级只增加合并成本。
 
@@ -86,7 +86,7 @@ cat > /tmp/protect-a.json <<'JSON'
   "required_conversation_resolution": false
 }
 JSON
-gh api -X PUT repos/cvcingcvc-code/141/branches/main/protection \
+gh api -X PUT repos/cvcingcvc-code/personal-knowledge-os/branches/main/protection \
   -H "Accept: application/vnd.github+json" --input /tmp/protect-a.json
 ```
 
@@ -100,7 +100,7 @@ gh api -X PUT repos/cvcingcvc-code/141/branches/main/protection \
 1. 先取**真实**的检查名，不要凭记忆写：
 
 ```bash
-gh api repos/cvcingcvc-code/141/commits/main/check-runs \
+gh api repos/cvcingcvc-code/personal-knowledge-os/commits/main/check-runs \
   --jq '.check_runs[] | {name, conclusion}'
 ```
 
@@ -123,7 +123,7 @@ cat > /tmp/protect-b.json <<'JSON'
   "allow_deletions": false
 }
 JSON
-gh api -X PUT repos/cvcingcvc-code/141/branches/main/protection \
+gh api -X PUT repos/cvcingcvc-code/personal-knowledge-os/branches/main/protection \
   -H "Accept: application/vnd.github+json" --input /tmp/protect-b.json
 ```
 

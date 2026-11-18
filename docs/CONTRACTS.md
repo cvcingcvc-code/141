@@ -1,9 +1,9 @@
-# CONTRACTS.md — 统一接口契约（v1.0.0 / rc4）
+# CONTRACTS.md — 统一接口契约（v1.0.1）
 
 > **这是本项目唯一的跨模块协议。变更必须走 `docs/rfc/`，由主 Agent 裁决并升版本号。**
 > 本文件与代码冲突时，**以本文件为准**，代码视为缺陷。
 
-契约版本：`1.0.0`（rc4，2026-11-06；rc2 修订 P0-1/P0-2/P1-1..P1-5；rc3 将 `published` 默认改为 `false` 并补审批证据字段；rc4 为 Wave 1 集成修正：补齐 `npm test` / `typecheck` 命令与 `src/content.config.ts` 归属，无字段/路由/产物变更）
+契约版本：`1.0.1`（2026-11-18，见 `docs/rfc/RFC-001-repo-rename-base.md`：同步仓库改名 `personal-knowledge-os` 的示例 URL 与 `base` 示例值，无字段/路由/产物形状变更；历史 rc4 基线见 C-16）
 契约 ID 前缀约定：`C-*` 为契约条款，`V-*` 为校验错误，`W-*` 为校验警告。QA 缺陷单必须引用这些编号。
 
 ---
@@ -110,7 +110,7 @@ period:
 stack: [astro, markdown, github-actions]
 links:                    # 可选
   - label: Repository
-    url: https://github.com/cvcingcvc-code/141
+    url: https://github.com/cvcingcvc-code/personal-knowledge-os
 outcomes:                 # string[]，必填 ≥1，必须是可验证结果（禁止"提升了很多"这类空话）
   - "实现五类内容受控 schema，CI 拦截非法条目"
 linked_knowledge: []      # knowledge id[]
@@ -201,7 +201,7 @@ v0.1 只做"读一条内容"必需的页面，聚合类页面延后。所有路�
 {
   "schemaVersion": "1.0",
   "generatedAt": "2026-11-06T05:40:00.000Z",
-  "base": "/141/",
+  "base": "/personal-knowledge-os/",
   "counts": { "knowledge": 3, "projects": 1, "journal": 2, "errors": 1, "profile": 1 },
   "items": [
     {
@@ -316,6 +316,7 @@ v0.1 只做"读一条内容"必需的页面，聚合类页面延后。所有路�
 | 1.0.0-rc2 | 2026-11-06 | 作废 | 修订六项问题 |
 | 1.0.0-rc3 | 2026-11-06 | 已合并 | 安全修正：`published` 默认 `false`；`published_by` 必填且须人工标识；明确"字段是证据，门禁是用户确认合入 main" |
 | 1.0.0-rc4 | 2026-11-06 | 已合并 | C-11 增补 `npm test` / `npm run typecheck` / `npm run sync`；C-17 的 `feat/a2-` 行补 `src/content.config.ts`（A4 上报的归属差异）；无字段/路由/产物变更，向后兼容 |
+| 1.0.1 | 2026-11-18 | 已批准 | `RFC-001`：同步仓库改名 `personal-knowledge-os` 的示例 URL、C-10 `base` 示例值与 C-18 仓库标识；无字段/路由/校验规则变更 |
 
 ## C-17 分支改动范围门禁（**P1-4**）
 
@@ -342,7 +343,7 @@ AGENTS.md 的文字约束不构成权限门禁。CI 必须执行 `npm run scope:
 
 ## C-18 公开仓库数据边界与私密库（**P0-1**）
 
-本仓库 `cvcingcvc-code/141` 是 **public**。git 历史不可撤回：任何一次提交都视为已公开。
+本仓库 `cvcingcvc-code/personal-knowledge-os`（原名 `141`）是 **public**。git 历史不可撤回：任何一次提交都视为已公开。
 
 ### 数据分级
 

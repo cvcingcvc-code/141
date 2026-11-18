@@ -2,20 +2,20 @@
 
 把个人介绍、知识、项目、每日复盘、错误经验沉淀成**可追溯、可全文搜索**的静态知识站。
 
-- 站点（规划中）：https://cvcingcvc-code.github.io/141/
+- 站点（待首次公开部署验收）：https://cvcingcvc-code.github.io/personal-knowledge-os/
 - 内容源：`content/` 下的 Markdown + 受控 frontmatter
 - 技术栈：Astro 5 · zod · Pagefind · 原生 CSS · GitHub Actions
 
 ## 当前状态
 
-**Wave 2 完成（2026-11-06）**：站点骨架、12 条路由、内容校验、数据产物与全文搜索均已落地并可本地构建。
+**Wave 3A 安全收尾完成（2026-11-18）**：站点骨架、12 条路由模型、内容校验、数据产物、全文搜索、复盘导入门控与移动端可读性均已落地并完成独立验收。
 
-- 可运行能力：`npm run build` → 12 个 HTML + `dist/data/content.json` + `dist/pagefind/` 搜索索引
-- 内容现状：`content/` 仅 6 条**示例**条目且全部未发布，因此站点列表页显示空态、4 条动态详情路由不会生成
-- 公开部署：**未执行**。`deploy` 工作流只支持手动触发，需显式输入确认才发布（见 `AGENTS.md §6`）
-- 契约版本：`docs/CONTRACTS.md` v1.0.0-rc4；Wave 2 合并记录见 `docs/TASKS.md §12`
+- 可运行能力：`npm run build` → 8 个静态 HTML（4 类动态详情随已发布内容生成）+ `dist/data/content.json` + `dist/pagefind/` 搜索索引；`scripts/import/new-journal.mjs` 复盘导入（默认仓库外草稿 + 写盘前 PII/schema 预检）已落地
+- 内容现状：`content/` 共 7 条（6 条 `sample: true` 契约样本 + 1 条已入库真实知识 `KB-ENG-003`），全部 `published: false`（未上站），因此站点列表页显示空态、4 条动态详情路由暂不生成
+- 公开部署：**未执行**。`deploy` 工作流仅支持手动 `workflow_dispatch`，需仓库所有者批准并显式输入 `DEPLOY` 确认才发布
+- 契约版本：`docs/CONTRACTS.md` v1.0.1（`RFC-001` 仓库改名路径同步）；波次记录见 `docs/TASKS.md` 与 `docs/qa/`
 
-想看具体做了什么、验收到了什么程度，以 `docs/TASKS.md` 与 `docs/QA` 下的验收记录为准，不要以本段为准。
+想看具体做了什么、验收到了什么程度，以 `docs/TASKS.md` 与 `docs/qa/` 下的验收记录为准，不要以本段为准。
 
 ## 这是一个公开仓库
 
@@ -27,7 +27,7 @@
 
 ## 许可
 
-代码按 MIT 规划（`LICENSE` 随工具链在 T1.2 落地）；原创知识内容保留版权，不自动套用开放内容许可。
+代码采用 MIT 许可（见根目录 `LICENSE`）；原创知识内容保留版权，不自动套用开放内容许可。
 
 ## 先读什么
 
@@ -54,8 +54,8 @@
 ## 快速开始
 
 ```bash
-git clone https://github.com/cvcingcvc-code/141.git
-cd 141
+git clone https://github.com/cvcingcvc-code/personal-knowledge-os.git
+cd personal-knowledge-os
 npm ci
 npm run validate   # 内容校验
 npm run dev        # 本地开发

@@ -50,7 +50,7 @@ MVP 的判定标准：**五类内容各至少一条真实条目，站点可搜�
 | 站点 | **12 条路由**（C-9）：首页、关于、知识列表/详情、项目列表/详情、复盘列表/详情、错误列表/详情、搜索、404 |
 | 搜索 | Pagefind 静态全文搜索，构建期生成，无需后端 |
 | 数据导出 | `dist/data/content.json`（v0.1 **只此一个**；`graph.json` 延后） |
-| 部署 | GitHub Actions → GitHub Pages，`main` 合入即发布 |
+| 部署 | GitHub Actions → GitHub Pages（首次公开部署验收前保持手动 `workflow_dispatch` + `DEPLOY` 确认门控；验收获批后合入 `main` 发布） |
 | 复盘流程 | 模板 + 校验 + PR 审核（用户批准后才发布），数据源未接通处显式标注 |
 | 权限门禁 | `scope:check` 在 CI 拦越界改动（文字规则不算门禁） |
 | 隐私边界 | L3 私密内容不入库，走 `vault_ref` 指针；三层扫描 |
