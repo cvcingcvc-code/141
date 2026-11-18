@@ -11,7 +11,7 @@
 A5 只读业务代码，**不得**在共享仓库里写 `content/**` 夹具。复现统一走：
 
 ```
-git clone https://github.com/cvcingcvc-code/141.git /tmp/141-qa-<日期>
+git clone https://github.com/cvcingcvc-code/personal-knowledge-os.git /tmp/141-qa-<日期>
 # 或：git worktree add F:/141-wt/a5-qa-fixture <base> 后用 cp 注入夹具再丢弃
 cp qa/fixtures/<case>/<文件> <clone>/content/<对应目录>/
 cd <clone> && npm ci && npm run validate

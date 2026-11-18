@@ -9,7 +9,7 @@
  *   3. 对 localhost 目标自动 fallback 到 IPv6 [::1]（Astro preview 只监听 ::1）。
  *
  * 用法（不经 package.json，见 CONTRACTS C-11）：
- *   node qa/scripts/link-check.mjs [--base http://localhost:4321/141/] [--strict]
+ *   node qa/scripts/link-check.mjs [--base http://localhost:4321/personal-knowledge-os/] [--strict]
  *
  * 退出码：默认模式下，断链>0 或出现异常状态码 → 1。
  *         --strict 额外要求：固定路由 + 动态有效 ID 全部 200，且无效 ID 全部正确 404。
@@ -24,7 +24,7 @@ import { writeFileSync } from 'node:fs';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 function parseArgs(argv) {
-  const args = { base: 'http://localhost:4321/141/', strict: false };
+  const args = { base: 'http://localhost:4321/personal-knowledge-os/', strict: false };
   for (let i = 0; i < argv.length; i++) {
     if (argv[i] === '--base') args.base = argv[++i];
     else if (argv[i] === '--strict') args.strict = true;

@@ -33,7 +33,7 @@
 - [ ] `sample: true` 条目显示「示例」徽章
 - [ ] 不存在的 id 落到 404 页（非空白页）
 - [ ] 页面无标签页/领域页入口（延后项不得被顺手实现）
-- [ ] 所有链接走 `BASE_URL`，无硬编码 `/`（子路径 `/141/`）
+- [ ] 所有链接走 `BASE_URL`，无硬编码 `/`（子路径 `/personal-knowledge-os/`）
 
 ## 3. 反向用例（必须失败，失败才算通过，ACCEPTANCE §4）
 
@@ -101,7 +101,7 @@
 - [ ] 正常 PR → 绿灯
 - [ ] 分支保护自证：A1 完整走通「PR → CI 绿 → 合并」
 - [ ] 直推 main 被拒（贴 `git push` 报错原文）
-- [ ] `https://cvcingcvc-code.github.io/141/` 返回 200 且样式正常
+- [ ] `https://cvcingcvc-code.github.io/personal-knowledge-os/` 返回 200 且样式正常
 
 ## 9. 缺陷单追踪
 
