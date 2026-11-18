@@ -1,5 +1,5 @@
 /**
- * src/content/schema.ts — CONTRACTS.md v1.0.0-rc3 的唯一代码实现（A2 拥有，见 AGENTS.md §3）
+ * src/content/schema.ts — CONTRACTS.md v1.1.0 的唯一代码实现（A2 拥有，见 AGENTS.md §3）
  *
  * 字段逐字对应：
  *   C-3 公共 frontmatter
@@ -19,7 +19,7 @@
 import { z } from 'zod';
 
 /** 对应 CONTRACTS.md 的版本号（契约撕裂时用于对照） */
-export const CONTRACT_VERSION = '1.0.0-rc3';
+export const CONTRACT_VERSION = '1.1.0';
 
 /* ------------------------------------------------------------------ *
  * C-1 / C-2 类型、目录与 id
@@ -84,8 +84,8 @@ export const ROUTE_SEGMENT = Object.freeze({
   error: 'errors',
 });
 
-/** C-9：v0.1 的固定路由（W-005 用；详情路由按条目动态生成） */
-export const STATIC_ROUTES = ['/', '/about/', '/knowledge/', '/projects/', '/journal/', '/errors/', '/search/', '/404.html'];
+/** C-9：固定路由（W-005 用；详情路由按条目动态生成） */
+export const STATIC_ROUTES = ['/', '/about/', '/knowledge/', '/projects/', '/journal/', '/errors/', '/search/', '/capture/', '/404.html'];
 
 /* ------------------------------------------------------------------ *
  * 人工标识（V-019）
