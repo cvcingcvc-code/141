@@ -3,7 +3,7 @@
  * link-check.mjs — A5 独立 QA：路由契约探测 + 已发布详情页动态核验 + 未发布隔离 + 站内链接爬取
  *
  * 检查维度：
- *   1. 固定路由（8 条，C-9）：全部返回 HTTP 200。
+ *   1. 固定路由（9 条，C-9 / RFC-002）：全部返回 HTTP 200。
  *   2. 动态有效路由（已发布详情页）：请求 ${base}data/content.json 动态加载全部已发布详情条目，
  *      逐条验证返回 HTTP 200。
  *   3. 未发布 sample 路由隔离（4 条）：验证仓库内 sample:true 未发布条目在线上/产物中返回正确 404。
@@ -37,7 +37,7 @@ function parseArgs(argv) {
   return args;
 }
 
-/** C-9 固定路由（8 条） */
+/** C-9 固定路由（9 条，RFC-002 新增 capture/） */
 const STATIC_ROUTES = [
   { path: '', desc: '首页' },
   { path: 'about/', desc: '个人介绍（profile）' },
@@ -46,6 +46,7 @@ const STATIC_ROUTES = [
   { path: 'journal/', desc: '复盘列表（仅 approved）' },
   { path: 'errors/', desc: '错误经验列表' },
   { path: 'search/', desc: '全文搜索（Pagefind）' },
+  { path: 'capture/', desc: '思考捕获工作台（纯静态双库入口）' },
   { path: '404.html', desc: '未找到页（固定文件名）' },
 ];
 
@@ -134,7 +135,7 @@ async function main() {
   console.log();
 
   // 1) 固定路由
-  console.log('--- 固定路由（8 条）---');
+  console.log(`--- 固定路由（${STATIC_ROUTES.length} 条）---`);
   const fixed = [];
   for (const r of STATIC_ROUTES) {
     const url = args.base + r.path;
